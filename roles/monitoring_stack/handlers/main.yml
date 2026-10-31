@@ -2,17 +2,17 @@
 - name: Restart prometheus
   community.docker.docker_compose_v2:
     project_src: "{{ homelab_stack_dirs.monitoring }}"
-    services: [prometheus]
+    services: prometheus
     state: restarted
 
 - name: Restart grafana
   community.docker.docker_compose_v2:
     project_src: "{{ homelab_stack_dirs.monitoring }}"
-    services: [grafana]
+    services: grafana
     state: restarted
 
 - name: Restart homepage
   community.docker.docker_compose_v2:
     project_src: "{{ homelab_stack_dirs.monitoring }}"
-    services: [homepage]
+    services: homepage
     state: restarted

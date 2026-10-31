@@ -6,7 +6,15 @@
     owner: "{{ homelab_uid }}"
     group: "{{ homelab_gid }}"
     mode: "0755"
-  loop: ["", appdata, appdata/jellyfin, appdata/radarr, appdata/sonarr, appdata/seerr, appdata/recyclarr, appdata/bazarr]
+  loop:
+    - ""
+    - appdata
+    - appdata/jellyfin
+    - appdata/radarr
+    - appdata/sonarr
+    - appdata/seerr
+    - appdata/recyclarr
+    - appdata/bazarr
 
 - name: Deploy docker-compose.yml
   ansible.builtin.template:

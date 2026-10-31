@@ -93,7 +93,11 @@
     owner: "{{ homelab_uid }}"
     group: "{{ homelab_gid }}"
     mode: "0644"
-  loop: [settings.yaml, widgets.yaml, bookmarks.yaml, custom.css]
+  loop:
+    - settings.yaml
+    - widgets.yaml
+    - bookmarks.yaml
+    - custom.css
   when: homelab_homepage | bool
   notify: Restart homepage
 

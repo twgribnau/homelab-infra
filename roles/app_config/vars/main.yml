@@ -38,7 +38,19 @@ app_config_jellyfin_settings:
   - { path: /encoding, settings: "{{ app_config_jellyfin_encoding }}" }
 
 app_config_recyclarr_small_qualities:
-  [HDTV-720p, WEBDL-720p, WEBRip-720p, Bluray-720p, HDTV-1080p, WEBDL-1080p, WEBRip-1080p, Bluray-1080p]
+  - HDTV-720p
+  - WEBDL-720p
+  - WEBRip-720p
+  - Bluray-720p
+  - HDTV-1080p
+  - WEBDL-1080p
+  - WEBRip-1080p
+  - Bluray-1080p
 
 # Profiles Radarr and Sonarr create on install (HD-1080p is kept: Recyclarr fills it).
-app_config_stock_profiles: [Any, SD, HD-720p, Ultra-HD, HD - 720p/1080p]
+app_config_stock_profiles:
+  - Any
+  - SD
+  - HD-720p
+  - Ultra-HD
+  - HD - 720p/1080p

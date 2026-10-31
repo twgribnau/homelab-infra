@@ -9,7 +9,11 @@ on:
       bump:
         description: Version to raise
         type: choice
-        options: [auto, patch, minor, major]
+        options:
+          - auto
+          - patch
+          - minor
+          - major
         default: auto
 permissions:
   contents: write

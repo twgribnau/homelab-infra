@@ -32,9 +32,9 @@
   register: _tailscale_status
   changed_when: false
   check_mode: false
-  tags: [always]
+  tags: always
 
 - name: Remember the Tailscale name
   ansible.builtin.set_fact:
     tailscale_host: "{{ (_tailscale_status.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
-  tags: [always]
+  tags: always

@@ -22,7 +22,13 @@ services:
     ports:
       - "{{ homelab_publish_ip }}:{{ homelab_ports.prometheus }}:9090"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9090/-/healthy"]
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://localhost:9090/-/healthy"
       interval: 60s
       timeout: 10s
       retries: 3
@@ -31,7 +37,7 @@ services:
   grafana:
     image: {{ monitoring_stack_images.grafana }}
     user: "{{ monitoring_stack_grafana_uid }}:{{ monitoring_stack_grafana_uid }}"
-    env_file: [grafana.env]
+    env_file: grafana.env
     environment:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/homelab-overview.json
@@ -42,7 +48,13 @@ services:
     ports:
       - "{{ homelab_publish_ip }}:{{ homelab_ports.grafana }}:3000"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/api/health"]
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "http://localhost:3000/api/health"
       interval: 60s
       timeout: 10s
       retries: 3
@@ -51,7 +63,7 @@ services:
   # No host ports: Prometheus scrapes node-exporter:9100 and cadvisor:8080.
   node-exporter:
     image: {{ monitoring_stack_images.node_exporter }}
-    command: [--path.rootfs=/host]
+    command: --path.rootfs=/host
     pid: host
     volumes:
       - /:/host:ro,rslave
@@ -60,7 +72,8 @@ services:
   cadvisor:
     image: {{ monitoring_stack_images.cadvisor }}
     privileged: true
-    devices: [/dev/kmsg]
+    devices:
+      - /dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro

@@ -14,7 +14,8 @@ contactPoints:
 policies:
   - orgId: 1
     receiver: Telegram
-    group_by: [alertname]
+    group_by:
+      - alertname
     repeat_interval: 12h
 
 groups:
@@ -41,7 +42,11 @@ groups:
               refId: B
               type: threshold
               expression: A
-              conditions: [{ evaluator: { type: gt, params: [90] } }]
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 90
         annotations:
           summary: A disk is more than 90% full.
 
@@ -63,7 +68,11 @@ groups:
               refId: B
               type: threshold
               expression: A
-              conditions: [{ evaluator: { type: gt, params: [85] } }]
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 85
         annotations:
           summary: A sensor has been above 85 °C for 5 minutes.
 
@@ -87,6 +96,10 @@ groups:
               refId: B
               type: threshold
               expression: A
-              conditions: [{ evaluator: { type: gt, params: [2] } }]
+              conditions:
+                - evaluator:
+                    type: gt
+                    params:
+                      - 2
         annotations:
           summary: A container restarted more than twice in 15 minutes.

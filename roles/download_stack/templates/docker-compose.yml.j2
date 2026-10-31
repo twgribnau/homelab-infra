@@ -11,8 +11,10 @@ services:
 {% if homelab_vpn | bool %}
   gluetun:
     image: {{ download_stack_images.gluetun }}
-    cap_add: [NET_ADMIN]
-    devices: [/dev/net/tun:/dev/net/tun]
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     environment:
       VPN_SERVICE_PROVIDER: custom
       VPN_TYPE: wireguard
@@ -34,7 +36,8 @@ services:
     # No VPN. The alias keeps the address the other apps use.
     networks:
       default:
-        aliases: [gluetun]
+        aliases:
+          - gluetun
     ports:
       - "{{ homelab_publish_ip }}:{{ homelab_ports.qbittorrent }}:{{ homelab_ports.qbittorrent }}"
 {% else %}
@@ -56,7 +59,15 @@ services:
     healthcheck:
       # Fails when the VPN is down or gluetun restarted underneath it; autoheal then
       # restarts qBittorrent so it re-attaches to gluetun's network.
-      test: ["CMD", "curl", "-fsS", "--max-time", "15", "-o", "/dev/null", "https://www.cloudflare.com/cdn-cgi/trace"]
+      test:
+        - "CMD"
+        - "curl"
+        - "-fsS"
+        - "--max-time"
+        - "15"
+        - "-o"
+        - "/dev/null"
+        - "https://www.cloudflare.com/cdn-cgi/trace"
       interval: 60s
       timeout: 20s
       retries: 3
@@ -78,7 +89,13 @@ services:
     ports:
       - "{{ homelab_publish_ip }}:{{ homelab_ports.prowlarr }}:9696"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:9696/ping"]
+      test:
+        - "CMD"
+        - "curl"
+        - "-fsS"
+        - "-o"
+        - "/dev/null"
+        - "http://localhost:9696/ping"
       interval: 60s
       timeout: 10s
       retries: 3

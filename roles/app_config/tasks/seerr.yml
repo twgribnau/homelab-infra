@@ -82,7 +82,9 @@
       X-Api-Key: "{{ _app_config_seerr_key }}"
     body_format: json
     body: "{{ _server | combine(_extra[_arr.name]) }}"
-    status_code: [200, 201]
+    status_code:
+      - 200
+      - 201
   loop: "{{ _app_config_seerr_profiles.results | rejectattr('skipped', 'defined') }}"
   loop_control:
     label: "{{ item.item.item.name }}"

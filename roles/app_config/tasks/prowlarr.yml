@@ -9,7 +9,8 @@
       implementation: FlareSolverr
     body:
       name: FlareSolverr
-    tags: [flaresolverr]
+    tags:
+      - flaresolverr
     fields:
       host: http://flaresolverr:8191
 
@@ -73,7 +74,9 @@
     body_format: json
     body:
       name: ApplicationIndexerSync
-    status_code: [200, 201]
+    status_code:
+      - 200
+      - 201
   when: _app_config_indexers is changed  # noqa: no-handler
   changed_when: false
 

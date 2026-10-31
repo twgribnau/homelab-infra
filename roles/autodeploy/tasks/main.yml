@@ -4,6 +4,15 @@
 # Telegram. When the run fails it restores the backup and deploys the previous commit.
 # Once: add ~/.ssh/homelab_deploy.pub on GitHub under Settings > Deploy keys (read-only).
 
+# git pulls the repo, curl sends to Telegram, restic makes the backups, venv holds Ansible.
+- name: Install what the deploys use
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - restic
+      - python3-venv
+
 - name: Create the SSH folder
   ansible.builtin.file:
     path: "{{ autodeploy_key | dirname }}"
@@ -30,10 +39,6 @@
     update: false
   become: true
   become_user: "{{ homelab_user }}"
-
-- name: Install restic for the backups
-  ansible.builtin.apt:
-    name: restic
 
 - name: Install Ansible for the deploys
   ansible.builtin.pip:
@@ -84,7 +89,9 @@
     src: "{{ item }}.j2"
     dest: "/etc/systemd/system/{{ item }}"
     mode: "0644"
-  loop: [homelab-autodeploy.service, homelab-autodeploy.timer]
+  loop:
+    - homelab-autodeploy.service
+    - homelab-autodeploy.timer
 
 # Only the timer: the service may be the very run that is executing this playbook.
 - name: Start the timer

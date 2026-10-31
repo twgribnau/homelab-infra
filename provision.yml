@@ -15,14 +15,14 @@
         that: (playbook_dir ~ '/secrets/vault.yml') is file
         fail_msg: No secrets/vault.yml. Run ./setup.sh first.
         quiet: true
-      tags: [always]
+      tags: always
 
     - name: Read your secrets and settings
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/secrets/*.yml') | sort }}"
       no_log: true
-      tags: [always]
+      tags: always
 
     # A run you start by hand waits for an automatic deploy that is busy (roles/autodeploy).
     - name: Wait for an automatic deploy to finish
@@ -34,14 +34,25 @@
       delay: 10
       check_mode: false
       when: lookup('env', 'HOMELAB_AUTODEPLOY') == ''
-      tags: [always]
+      tags: always
 
   roles:
-    - { role: tailscale, tags: [tailscale], when: homelab_tailscale | bool }
-    - { role: docker, tags: [docker] }
-    - { role: homelab_common, tags: [always] }
-    - { role: download_stack, tags: [download] }
-    - { role: media_stack, tags: [media] }
-    - { role: monitoring_stack, tags: [monitoring], when: homelab_monitoring | bool or homelab_homepage | bool }
-    - { role: app_config, tags: [apps] }
-    - { role: autodeploy, tags: [autodeploy], when: homelab_repo | default('') | length > 0 }
+    - role: tailscale
+      tags: tailscale
+      when: homelab_tailscale | bool
+    - role: docker
+      tags: docker
+    - role: homelab_common
+      tags: always
+    - role: download_stack
+      tags: download
+    - role: media_stack
+      tags: media
+    - role: monitoring_stack
+      tags: monitoring
+      when: homelab_monitoring | bool or homelab_homepage | bool
+    - role: app_config
+      tags: apps
+    - role: autodeploy
+      tags: autodeploy
+      when: homelab_repo | default('') | length > 0

@@ -20,7 +20,9 @@
           UICulture: en-US
           MetadataCountryCode: "{{ app_config_jellyfin_country }}"
           PreferredMetadataLanguage: "{{ app_config_jellyfin_language }}"
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
 
     # Jellyfin creates the first user on this GET; the POST below sets its login.
     - name: Jellyfin | Wizard - create the admin
@@ -35,7 +37,9 @@
         body:
           Name: "{{ homelab_username }}"
           Password: "{{ homelab_password }}"
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
       no_log: true
 
     - name: Jellyfin | Wizard - remote access
@@ -46,13 +50,17 @@
         body:
           EnableRemoteAccess: true
           EnableAutomaticPortMapping: false
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
 
     - name: Jellyfin | Wizard - finish
       ansible.builtin.uri:
         url: "{{ app_config_urls.jellyfin }}/Startup/Complete"
         method: POST
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
       changed_when: true
 
 - name: Jellyfin | Sign in as the admin
@@ -95,7 +103,9 @@
             EnableRealtimeMonitor: true
             PreferredMetadataLanguage: "{{ app_config_jellyfin_language }}"
             MetadataCountryCode: "{{ app_config_jellyfin_country }}"
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
       loop: "{{ app_config_jellyfin_libraries }}"
       loop_control:
         label: "{{ item.name }}"
@@ -121,7 +131,9 @@
           Authorization: "{{ _auth }}"
         body_format: json
         body: "{{ item.json | combine(item.item.settings) }}"
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
       loop: "{{ _app_config_jf_current.results }}"
       loop_control:
         label: "{{ item.item.settings | list | join(', ') }}"
@@ -143,7 +155,9 @@
         method: POST
         headers:
           Authorization: "{{ _auth }}"
-        status_code: [200, 204]
+        status_code:
+          - 200
+          - 204
       when: "'servarr' not in _app_config_jf_existing_keys.json.Items | map(attribute='AppName')"
       changed_when: true
 

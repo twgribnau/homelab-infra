@@ -4,10 +4,15 @@
 name: Telegram
 on:
   pull_request:
-    types: [opened, reopened]
+    types:
+      - opened
+      - reopened
   workflow_run:
-    workflows: [CI, Release]
-    types: [completed]
+    workflows:
+      - CI
+      - Release
+    types:
+      - completed
 permissions: {}
 
 jobs:

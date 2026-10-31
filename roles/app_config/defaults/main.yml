@@ -24,9 +24,23 @@ app_config_qbittorrent_preferences:
 # What goes to Telegram (when it is set up): imports, imports that need you, errors and
 # app updates. Sonarr sends one message per import, so a season pack is one message.
 app_config_telegram_events:
-  radarr: [onDownload, onUpgrade, onManualInteractionRequired, onHealthIssue, onHealthRestored, onApplicationUpdate]
-  sonarr: [onImportComplete, onManualInteractionRequired, onHealthIssue, onHealthRestored, onApplicationUpdate]
-  prowlarr: [onHealthIssue, onHealthRestored, onApplicationUpdate]
+  radarr:
+    - onDownload
+    - onUpgrade
+    - onManualInteractionRequired
+    - onHealthIssue
+    - onHealthRestored
+    - onApplicationUpdate
+  sonarr:
+    - onImportComplete
+    - onManualInteractionRequired
+    - onHealthIssue
+    - onHealthRestored
+    - onApplicationUpdate
+  prowlarr:
+    - onHealthIssue
+    - onHealthRestored
+    - onApplicationUpdate
 # Seerr: new requests and requests it could not send to Radarr/Sonarr (2 + 16 + 128).
 app_config_seerr_telegram_types: 146
 
@@ -34,12 +48,19 @@ app_config_seerr_telegram_types: 146
 # for each language (ISO 639-1 codes). Changing the languages later is done in Bazarr itself.
 app_config_bazarr_profile:
   name: Dutch and English
-  languages: [nl, en]
+  languages:
+    - nl
+    - en
 # Bazarr's subtitle providers that need no account and have Dutch: subtitles already inside the
 # video files, subf2m (the Subscene archive) and Gestdown (Addic7ed, series only). Providers you
 # enable in Bazarr itself are kept, except the dead ones in app_config_bazarr_providers_dead.
-app_config_bazarr_providers: [embeddedsubtitles, subf2m, gestdown]
-app_config_bazarr_providers_dead: [tvsubtitles, yifysubtitles]
+app_config_bazarr_providers:
+  - embeddedsubtitles
+  - subf2m
+  - gestdown
+app_config_bazarr_providers_dead:
+  - tvsubtitles
+  - yifysubtitles
 # Plus opensubtitles.com, enabled when the vault has an account.
 app_config_opensubtitles_username: "{{ vault_opensubtitles_username | default('') }}"
 app_config_opensubtitles_password: "{{ vault_opensubtitles_password | default('') }}"
@@ -67,7 +88,13 @@ app_config_jellyfin_encoding:
   HardwareAccelerationType: vaapi
   VaapiDevice: /dev/dri/renderD128
   EnableHardwareEncoding: true
-  HardwareDecodingCodecs: [h264, hevc, mpeg2video, vc1, vp8, vp9]
+  HardwareDecodingCodecs:
+    - h264
+    - hevc
+    - mpeg2video
+    - vc1
+    - vp8
+    - vp9
   EnableDecodingColorDepth10Hevc: true
   EnableDecodingColorDepth10Vp9: true
 

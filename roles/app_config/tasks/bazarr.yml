@@ -20,7 +20,10 @@
     url: "{{ app_config_urls.bazarr }}/api/system/{{ item }}"
     headers:
       X-API-KEY: "{{ _app_config_bazarr_key }}"
-  loop: [settings, languages, languages/profiles]
+  loop:
+    - settings
+    - languages
+    - languages/profiles
   register: _app_config_bazarr_read
   check_mode: false
   no_log: true
