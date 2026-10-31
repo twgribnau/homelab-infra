@@ -22,14 +22,14 @@ On a server with Ubuntu 26.04 and a user with `sudo`:
 sudo apt install -y git
 git clone https://github.com/twgribnau/homelab-infra.git && cd homelab-infra
 mkdir ~/homelab-secrets && cp secrets.example/* ~/homelab-secrets/
-nano ~/homelab-secrets/vault.yml   # your username, a password for the apps, email
+nano ~/homelab-secrets/vault.yml   # your username, a password for the apps, email (see Your secrets)
 nano ~/homelab-secrets/local.yml   # which optional apps you want
 ./setup.sh
 .venv/bin/ansible-playbook provision.yml
 ```
 
 Optional before `./setup.sh`: the sites Prowlarr searches in `~/homelab-secrets/indexers.yml`,
-and your VPN's WireGuard config as `~/homelab-secrets/wg0.conf`.
+and your VPN's WireGuard config as `~/homelab-secrets/wg0.conf` (see [Your secrets](#your-secrets)).
 
 `setup.sh` asks nothing. It installs Ansible and Tailscale (unless `homelab_tailscale: false`),
 links `~/homelab-secrets` as `secrets/` and encrypts your secrets with a new vault password,
@@ -47,30 +47,26 @@ Log in with the username and password from your `vault.yml`.
 
 ## Your secrets
 
-Everything personal lives in `secrets/`, a link to `~/homelab-secrets`, and never in this repo:
+Everything personal lives in `secrets/`, a link to `~/homelab-secrets`, never in this repo.
+Start from [`secrets.example/`](secrets.example); each key is explained there.
 
-| File | |
-|---|---|
-| `vault.yml` | Passwords, accounts and API keys, encrypted with Ansible Vault |
-| `local.yml` | Your choices: optional apps, other settings (`secrets.example/local.yml`) |
-| `indexers.yml` | The sites Prowlarr searches (`secrets.example/indexers.yml`) |
-| `wg0.conf` | Optional: your VPN, encrypted |
+- **`vault.yml`**: passwords and API keys. Required: `vault_homelab_user` (your Ubuntu user),
+  `vault_homelab_password` (the login for every app), `vault_admin_email`, `vault_backup_password`.
+- **`indexers.yml`**: the sites Prowlarr searches. Per site a `name` and its `definition`, the
+  file name (without `.yml`) in [Prowlarr's indexer list](https://github.com/Prowlarr/Indexers/tree/master/definitions):
+  `- { name: My indexer, definition: <id> }`. Indexers added in Prowlarr itself are kept.
+- **`local.yml`**: your choices (see Options).
+- **`wg0.conf`**: optional, the WireGuard file from your VPN provider, as downloaded.
+
+`setup.sh` encrypts `vault.yml` and `wg0.conf`; change those later with
+`ansible-vault edit secrets/<file>`. The others are plain text.
 
 The vault password is in `.vault_pass` (not in git). Keep it in your password manager: with it,
 the encrypted files are useless to anyone else, and without it they are useless to you.
 
-Back up `~/homelab-secrets` in a **private** repo:
-
-```bash
-cd ~/homelab-secrets
-git add -A && git commit -m "My homelab secrets"
-git remote add origin git@github.com:<you>/homelab-secrets.git   # create it as Private on GitHub first
-git push -u origin main
-```
-
-On a new server, clone it to `~/homelab-secrets` and put the vault password in `.vault_pass`
-before `./setup.sh`. Edit with `ansible-vault edit secrets/vault.yml`; add more of your own
-`.yml` files to `secrets/` and they are read too.
+Keep a copy of `~/homelab-secrets` somewhere private: a USB stick, or a private git repo. On a
+new server, put it back in `~/homelab-secrets` and the vault password in `.vault_pass` before
+`./setup.sh`. More `.yml` files of your own in `secrets/` are read too.
 
 ## Options
 
@@ -91,17 +87,10 @@ With Tailscale: in the [admin console](https://login.tailscale.com/admin/dns), D
 MagicDNS and HTTPS Certificates. The core apps (qBittorrent, Prowlarr, Radarr, Sonarr, Jellyfin,
 Seerr) are always installed: they work together.
 
-Optional keys in the vault (`ansible-vault edit secrets/vault.yml`, all listed in
-`secrets.example/vault.yml`):
-
-| Key | |
-|---|---|
-| `vault_telegram_bot_token`, `vault_telegram_chat_id` | Notifications and alerts in Telegram |
-| `vault_opensubtitles_username`, `vault_opensubtitles_password` | An [opensubtitles.com](https://www.opensubtitles.com) account for Bazarr |
-| `vault_subdl_api_key`, `vault_subsource_api_key` | API keys for [SubDL](https://subdl.com) and [Subsource](https://subsource.net), more subtitles in Bazarr |
-| `vault_homelab_repo` | SSH address of your fork; the server then deploys its `main` by itself |
-| `vault_github_token` | With `vault_homelab_repo`: a read-only fine-grained token (Actions, Contents, Pull requests) for the GitHub card on Homepage |
-| `vault_torrent_port` | A peer port forwarded by your VPN provider |
+More subtitles: an [opensubtitles.com](https://www.opensubtitles.com) account
+(`vault_opensubtitles_username`, `vault_opensubtitles_password`) and API keys for
+[SubDL](https://subdl.com) and [Subsource](https://subsource.net) (`vault_subdl_api_key`,
+`vault_subsource_api_key`) in the vault.
 
 ## Usage
 
@@ -113,14 +102,25 @@ ansible-playbook provision.yml
 - Run part of it with `--tags docker|download|media|monitoring|apps|tailscale`, or one app with
   `--tags qbittorrent|jellyfin|arrs|prowlarr|recyclarr|seerr|bazarr|homepage`.
 - Preview with `--check --diff` (once Docker is installed).
-- Automatic deploys (with `vault_homelab_repo`) check GitHub every 10 minutes. Add
-  `~/.ssh/homelab_deploy.pub` (made by the first run) as a deploy key on GitHub. Log:
-  `journalctl -u homelab-autodeploy`.
-- Each automatic deploy first backs up the app data with [restic](https://restic.net) to
-  `/backup/restic`. When the playbook fails, that backup and the previous commit are put back.
 - `./reset.sh` wipes the server back to Ubuntu + Tailscale (`--keep-media` keeps the library).
 - Family members only need a Jellyfin user: make one in Jellyfin (Dashboard, Users) and log in
   with it on the TV.
+
+## Extras
+
+All optional; without them nothing of it is installed. None of the above needs GitHub.
+
+- **Telegram** (`vault_telegram_bot_token`, `vault_telegram_chat_id`): imports, errors and app
+  updates from Radarr, Sonarr, Prowlarr and Seerr, and Grafana alerts (full disk, heat,
+  crashing containers).
+- **Automatic deploys** (`vault_homelab_repo`, the SSH address of your fork on GitHub): the server
+  checks `main` every 10 minutes and runs the playbook when it changed. Add
+  `~/.ssh/homelab_deploy.pub` (made by the first run) as a deploy key on your fork. Before new
+  images it backs up the app data with [restic](https://restic.net) to `/backup/restic`; when the
+  run fails, it puts that backup and the previous commit back. Log: `journalctl -u homelab-autodeploy`.
+  With Telegram too: a bot for `/deploy`, `/status` and `/log`.
+- **GitHub card on Homepage** (`vault_github_token`, with automatic deploys): a read-only
+  fine-grained token (Actions, Contents, Pull requests) for your fork.
 
 ## Layout
 
@@ -139,11 +139,8 @@ ansible-playbook provision.yml
 | `roles/tailscale` | Keeps Tailscale updated, publishes the web UIs with `tailscale serve` |
 | `library/` | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs |
 | `filter_plugins/` | Password hash for qBittorrent's first-start config, Bazarr's settings form |
-| `roles/autodeploy` | Runs the playbook when `main` changes on GitHub: backup first, rollback on failure, reports to Telegram. With Telegram set up, also a bot for `/deploy`, `/status` (containers, disk space) and `/log` |
-| `renovate.json` | [Renovate](https://github.com/apps/renovate) opens one PR a week with newer image and collection versions; patch updates merge by themselves once CI passes |
-| `.github/workflows/ci.yml` | ansible-lint on every PR and push to main; for PRs that pass, the playbook twice on a fresh VM: a full install, then a run that must change nothing (no VPN, GPU or Tailscale there) |
-| `.github/workflows/release.yml` | Run by hand (Actions → Release → Run workflow): tags `main` with the next version and publishes release notes from the PRs merged since the last release. `auto` picks the version from the commit titles (`feat!:` major, `feat:` minor, else patch) |
-| `.github/workflows/telegram.yml` | Sends new PRs to Telegram (repo secrets `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) |
+| `roles/autodeploy` | Automatic deploys (Extras) |
+| `.github/`, `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
 
 ## What gets configured
 
@@ -158,7 +155,6 @@ ansible-playbook provision.yml
 | Bazarr | Radarr/Sonarr connection, Dutch and English subtitles for everything (`app_config_bazarr_profile`), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
 | Grafana | Optional (`homelab_monitoring`): Prometheus datasource and one Homelab dashboard (server and containers) as home page |
 | Homepage | Optional (`homelab_homepage`): every app with a link and a live widget (queues, streams, downloads), server load |
-| Telegram | Optional (bot in the vault): imports, errors and app updates from Radarr, Sonarr, Prowlarr and Seerr; Grafana alerts for a full disk, heat and crashing containers |
 
 Anything not managed here, such as extra Jellyfin users and libraries or indexers you add by hand,
 is left alone. Settings that are managed here are set back on the next run.
