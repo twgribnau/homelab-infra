@@ -1,12 +1,8 @@
-# Sends a Telegram message when a PR opens (Renovate's weekly updates), with what changes and
-# the link to merge it, and when CI or a release fails. Repo secrets: TELEGRAM_BOT_TOKEN and
-# TELEGRAM_CHAT_ID.
+# Sends a Telegram message when CI passes on a PR (also Renovate's weekly updates, with what
+# changes), with a button to the PR to merge it, and when CI or a release fails.
+# Repo secrets: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.
 name: Telegram
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
   workflow_run:
     workflows:
       - CI
@@ -16,33 +12,47 @@ on:
 permissions: {}
 
 jobs:
-  pull-request:
-    # Not for PRs from forks: they get no secrets.
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+  # Not for PRs from forks: GitHub doesn't list those in pull_requests.
+  ready:
+    if: >-
+      github.event_name == 'workflow_run' && github.event.workflow_run.name == 'CI'
+      && github.event.workflow_run.event == 'pull_request'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.pull_requests[0]
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
-      - name: Send the PR to Telegram
+      - name: Send the PR that is ready to Telegram
         env:
           TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TITLE: ${{ github.event.pull_request.title }}
-          BODY: ${{ github.event.pull_request.body }}
-          URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.workflow_run.pull_requests[0].number }}
         shell: python
         run: |
-          import os, re, urllib.parse, urllib.request
+          import json, os, re, urllib.parse, urllib.request
+          env = os.environ
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{env['GITHUB_REPOSITORY']}/pulls/{env['PR']}",
+              headers={"Authorization": f"Bearer {env['GH_TOKEN']}", "Accept": "application/vnd.github+json"})
+          pr = json.load(urllib.request.urlopen(request))
+          if pr["state"] != "open":
+              raise SystemExit
+          # Renovate's patch updates merge by themselves (auto-merge is set on the PR).
+          status = "✅ CI passed, merging by itself" if pr["auto_merge"] else "✅ Ready to merge"
           # Renovate's table rows: | [docker.io/linuxserver/prowlarr](...) | minor | `2.6.5` -> `2.7.0` |
           lines = []
-          for row in (os.environ["BODY"] or "").splitlines():
+          for row in (pr["body"] or "").splitlines():
               cells = [c.strip() for c in row.strip().strip("|").split("|")]
               change = next((c for c in cells if "→" in c or "->" in c), None)
               name = re.match(r"\[([^\]]+)\]", cells[0])
               if change and name:
                   lines.append(f"• {name[1].split('/')[-1]}: {change.replace('`', '')}")
-          text = "\n".join([f"🆕 {os.environ['TITLE']}", *lines, "", os.environ["URL"]])
-          data = urllib.parse.urlencode({"chat_id": os.environ["CHAT_ID"], "text": text,
-                                         "disable_web_page_preview": "true"}).encode()
-          urllib.request.urlopen(f"https://api.telegram.org/bot{os.environ['TOKEN']}/sendMessage", data)
+          button = {"inline_keyboard": [[{"text": "Open the PR to merge", "url": pr["html_url"]}]]}
+          data = urllib.parse.urlencode({"chat_id": env["CHAT_ID"], "text": "\n".join([f"{status}: {pr['title']}", *lines]),
+                                         "reply_markup": json.dumps(button)}).encode()
+          urllib.request.urlopen(f"https://api.telegram.org/bot{env['TOKEN']}/sendMessage", data)
 
   failed:
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
