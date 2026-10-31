@@ -165,5 +165,7 @@ is left alone. Settings that are managed here are set back on the next run.
 
 ## Contributing
 
-This is a personal project, shared as it is. Feel free to fork it; pull requests and issues
-are not taken.
+Issues and pull requests are welcome. PR titles follow
+[Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `chore:`), since
+the release notes and version come from them. CI runs ansible-lint and a full install on a fresh
+VM for every PR.
