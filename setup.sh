@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # First-time setup on the server: installs Ansible (and Tailscale, unless secrets/local.yml
-# turns it off), links ~/homelab-secrets as secrets/ and encrypts vault.yml, indexers.yml and
-# wg0.conf if they aren't yet. Asks nothing: fill in your secrets first (README). Safe to run again.
+# turns it off), links ~/homelab-secrets as secrets/ and encrypts vault.yml and wg0.conf if
+# they aren't yet. Asks nothing: fill in your secrets first (README). Safe to run again.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -26,8 +26,8 @@ if [ ! -f .vault_pass ]; then
   (umask 077; openssl rand -base64 32 >.vault_pass)
   echo "New vault password in .vault_pass. Save it in your password manager: $(cat .vault_pass)"
 fi
-# local.yml (your choices) stays readable.
-for file in secrets/vault.yml secrets/indexers.yml secrets/wg0.conf; do
+# local.yml and indexers.yml hold nothing secret and stay readable.
+for file in secrets/vault.yml secrets/wg0.conf; do
   if [ -f "$file" ] && ! encrypted "$file"; then
     .venv/bin/ansible-vault encrypt "$file"
   fi

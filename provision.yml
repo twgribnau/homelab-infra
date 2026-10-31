@@ -24,6 +24,18 @@
       no_log: true
       tags: always
 
+    - name: Check the required keys in secrets/vault.yml
+      ansible.builtin.assert:
+        that: lookup('ansible.builtin.vars', item, default='') | string | length > 0
+        fail_msg: Fill in {{ item }} in secrets/vault.yml (ansible-vault edit secrets/vault.yml).
+        quiet: true
+      loop:
+        - vault_homelab_user
+        - vault_homelab_password
+        - vault_admin_email
+        - vault_backup_password
+      tags: always
+
     # A run you start by hand waits for an automatic deploy that is busy (roles/autodeploy).
     - name: Wait for an automatic deploy to finish
       ansible.builtin.systemd_service:
