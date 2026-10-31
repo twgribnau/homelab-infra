@@ -1,0 +1,40 @@
+---
+# Tailscale itself is installed and logged in by ./setup.sh (or by hand).
+# Serving apps that aren't up yet is fine: their address answers once they start.
+
+# Security fixes. The upgrade restarts tailscaled, so connections over Tailscale stall for a
+# few seconds; the playbook itself runs locally and is not affected.
+- name: Keep Tailscale up to date
+  ansible.builtin.apt:
+    name: tailscale
+    state: latest
+    only_upgrade: true
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Read the current serve config
+  ansible.builtin.command: tailscale serve status --json
+  register: _tailscale_serve
+  changed_when: false
+  check_mode: false
+
+- name: Publish the web UIs over Tailscale HTTPS
+  ansible.builtin.command: tailscale serve --bg --https={{ item.port }} http://127.0.0.1:{{ item.target }}
+  loop: "{{ tailscale_serve | rejectattr('app', 'in', homelab_apps_off) }}"
+  loop_control:
+    label: "https:{{ item.port }} -> 127.0.0.1:{{ item.target }}"
+  when: item.port | string not in ((_tailscale_serve.stdout | from_json).TCP | default({}))
+  changed_when: true
+
+# The server's Tailscale name (homelab.<tailnet>.ts.net), for links to the apps.
+- name: Read the Tailscale name
+  ansible.builtin.command: tailscale status --json
+  register: _tailscale_status
+  changed_when: false
+  check_mode: false
+  tags: [always]
+
+- name: Remember the Tailscale name
+  ansible.builtin.set_fact:
+    tailscale_host: "{{ (_tailscale_status.stdout | from_json).Self.DNSName | regex_replace('\\.$', '') }}"
+  tags: [always]

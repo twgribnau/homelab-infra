@@ -1,0 +1,59 @@
+---
+- name: Ensure the download stack folders exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0755"
+  loop:
+    - "{{ homelab_stack_dirs.download }}"
+    - "{{ homelab_stack_dirs.download }}/wireguard"
+    - "{{ homelab_stack_dirs.download }}/appdata"
+    - "{{ homelab_stack_dirs.download }}/appdata/qbittorrent"
+    - "{{ homelab_stack_dirs.download }}/appdata/qbittorrent/qBittorrent"
+    - "{{ homelab_stack_dirs.download }}/appdata/prowlarr"
+
+- name: Deploy the WireGuard config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/secrets/wg0.conf"
+    dest: "{{ homelab_stack_dirs.download }}/wireguard/wg0.conf"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0600"
+  no_log: true
+  when: homelab_vpn | bool
+  notify: Restart VPN
+
+- name: Warn that qBittorrent runs without a VPN
+  ansible.builtin.debug:
+    msg: No secrets/wg0.conf, so qBittorrent downloads without a VPN, from your own IP address.
+  when: not homelab_vpn | bool and not homelab_ci | bool
+
+# Only when qBittorrent has no config yet, so it starts with the shared login instead
+# of a random one-time password.
+- name: Seed the qBittorrent login on a fresh install
+  ansible.builtin.template:
+    src: qBittorrent.conf.j2
+    dest: "{{ homelab_stack_dirs.download }}/appdata/qbittorrent/qBittorrent/qBittorrent.conf"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+    force: false
+  no_log: true
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homelab_stack_dirs.download }}/docker-compose.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+
+- name: Start the download stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ homelab_stack_dirs.download }}"
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
+    recreate: "{{ 'always' if force_recreate | default(false) | bool else 'auto' }}"

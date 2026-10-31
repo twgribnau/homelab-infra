@@ -1,0 +1,93 @@
+---
+- name: Prowlarr | FlareSolverr proxy
+  servarr_resource:
+    url: "{{ app_config_urls.prowlarr }}"
+    api_key: "{{ _app_config_api_keys.prowlarr }}"
+    api_version: v1
+    endpoint: indexerProxy
+    schema:
+      implementation: FlareSolverr
+    body:
+      name: FlareSolverr
+    tags: [flaresolverr]
+    fields:
+      host: http://flaresolverr:8191
+
+- name: Prowlarr | Sync indexers to Radarr and Sonarr
+  servarr_resource:
+    url: "{{ app_config_urls.prowlarr }}"
+    api_key: "{{ _app_config_api_keys.prowlarr }}"
+    api_version: v1
+    endpoint: applications
+    schema:
+      implementation: "{{ item.name | capitalize }}"
+    body:
+      name: "{{ item.name | capitalize }}"
+      syncLevel: fullSync
+    fields:
+      prowlarrUrl: http://prowlarr:9696
+      baseUrl: "http://{{ item.name }}:{{ item.port }}"
+      apiKey: "{{ _app_config_api_keys[item.name] }}"
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# Prowlarr tests a site when it is saved, and public sites are flaky (rate limits, moved
+# mirrors). One failing site must not stop the run; the next run retries it.
+- name: Prowlarr | Indexers
+  servarr_resource:
+    url: "{{ app_config_urls.prowlarr }}"
+    api_key: "{{ _app_config_api_keys.prowlarr }}"
+    api_version: v1
+    endpoint: indexer
+    schema:
+      definitionName: "{{ item.definition }}"
+    state: "{{ item.state | default('present') }}"
+    body:
+      name: "{{ item.name }}"
+      enable: true
+      appProfileId: 1
+      priority: 25
+    tags: "{{ ['flaresolverr'] if item.flaresolverr | default(false) else [] }}"
+    fields: "{{ {'baseUrl': item.base_url} if item.base_url is defined else {} }}"
+  loop: "{{ app_config_prowlarr_indexers }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _app_config_indexers
+  failed_when: false
+
+- name: Prowlarr | Warn about indexers that could not be saved
+  ansible.builtin.debug:
+    msg: "{{ item.item.name }}: {{ item.msg }}"
+  loop: "{{ _app_config_indexers.results | selectattr('msg', 'defined') }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+# Prowlarr otherwise pushes indexer changes to Radarr/Sonarr only on its own schedule.
+- name: Prowlarr | Push indexer changes to Radarr and Sonarr now
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.prowlarr }}/api/v1/command"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _app_config_api_keys.prowlarr }}"
+    body_format: json
+    body:
+      name: ApplicationIndexerSync
+    status_code: [200, 201]
+  when: _app_config_indexers is changed  # noqa: no-handler
+  changed_when: false
+
+- name: Prowlarr | Telegram notifications
+  servarr_resource:
+    url: "{{ app_config_urls.prowlarr }}"
+    api_key: "{{ _app_config_api_keys.prowlarr }}"
+    api_version: v1
+    endpoint: notification
+    schema:
+      implementation: Telegram
+    body: "{{ {'name': 'Telegram'} | combine(dict(app_config_telegram_events.prowlarr | product([true]))) }}"
+    fields:
+      botToken: "{{ homelab_telegram_bot_token }}"
+      chatId: "{{ homelab_telegram_chat_id }}"
+      includeAppNameInTitle: true
+  when: homelab_telegram | bool

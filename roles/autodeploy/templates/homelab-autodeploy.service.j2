@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Run the homelab playbook when GitHub has new commits
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User={{ homelab_user }}
+EnvironmentFile=/etc/homelab-autodeploy.env
+Environment=HOMELAB_AUTODEPLOY=1
+ExecStart=/usr/local/bin/homelab-autodeploy

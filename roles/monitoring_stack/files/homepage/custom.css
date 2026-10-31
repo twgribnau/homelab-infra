@@ -1,0 +1,7 @@
+/* https://gethomepage.dev/configs/custom-css-js/ */
+
+/* The numbers in each tile two by two, so the tiles come out about square. */
+.service-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}

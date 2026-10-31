@@ -1,0 +1,39 @@
+---
+# Signing in with the Jellyfin admin creates Seerr's admin and connects it to Jellyfin.
+- name: Seerr | Sign in with the Jellyfin admin
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/auth/jellyfin"
+    method: POST
+    body_format: json
+    body:
+      username: "{{ homelab_username }}"
+      password: "{{ homelab_password }}"
+      hostname: jellyfin
+      port: 8096
+      useSsl: false
+      urlBase: ""
+      email: "{{ homelab_admin_email }}"
+      serverType: 2   # Jellyfin
+  register: _app_config_seerr_login
+  no_log: true
+
+- name: Seerr | Import the Jellyfin libraries
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/jellyfin/library/sync"
+    method: POST
+    headers:
+      Cookie: "{{ _app_config_seerr_login.cookies_string }}"
+  register: _app_config_seerr_libraries
+
+- name: Seerr | Enable the libraries
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/jellyfin/library/{{ item.id }}"
+    method: PUT
+    headers:
+      Cookie: "{{ _app_config_seerr_login.cookies_string }}"
+    body_format: json
+    body:
+      enabled: true
+  loop: "{{ _app_config_seerr_libraries.json }}"
+  loop_control:
+    label: "{{ item.name }}"

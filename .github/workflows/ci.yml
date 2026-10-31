@@ -1,0 +1,74 @@
+# Checks every PR before it gets merged: first ansible-lint, then (only when lint passes) the
+# playbook on a fresh Ubuntu VM, twice. The first run is a fresh install with every app wired
+# up; the second must change nothing. Renovate's image updates are tested this way too.
+# The real secrets aren't here, so lint uses secrets.example/ and the test dummy values.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash   # with pipefail, so a failing playbook isn't hidden by tee
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use the example secrets
+        run: |
+          cp -r secrets.example secrets
+          echo ci >.vault_pass
+      - uses: ansible/ansible-lint@v26.9.0
+
+  # Ubuntu and the Docker install are the same as on the server; the VM has no VPN (no
+  # wg0.conf), GPU (homelab_ci) or Tailscale. Not again after the merge: the PR already ran it.
+  test:
+    needs: lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-26.04  # same as the server
+    timeout-minutes: 45
+    env:
+      PLAYBOOK: >-
+        .venv/bin/ansible-playbook provision.yml -e homelab_ci=true -e homelab_tailscale=false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Ansible
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -q -r requirements.txt
+          .venv/bin/ansible-galaxy collection install -r collections/requirements.yml
+
+      - name: Use a test vault
+        run: |
+          mkdir secrets
+          cat >secrets/vault.yml <<'VAULT'
+          vault_homelab_user: runner
+          vault_homelab_password: Test-password-123
+          vault_admin_email: test@example.com
+          vault_backup_password: test
+          VAULT
+          echo test >.vault_pass
+
+      - name: Fresh install
+        run: $PLAYBOOK
+
+      - name: Second run changes nothing
+        run: |
+          $PLAYBOOK | tee second-run.log
+          grep -Eq ' changed=0 ' second-run.log
+
+      - name: Show the containers and their logs
+        if: failure()
+        run: |
+          docker ps -a --format 'table {{.Names}}\t{{.Status}}'
+          for name in $(docker ps -a --format '{{.Names}}'); do
+            echo "::group::$name"; docker logs --tail 50 "$name" 2>&1; echo "::endgroup::"
+          done

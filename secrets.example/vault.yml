@@ -1,0 +1,26 @@
+---
+# Copy this to secrets/vault.yml and fill it in; ./setup.sh encrypts it. Change it later with:
+#   ansible-vault edit secrets/vault.yml
+
+vault_homelab_user: ""       # the server's login user (owns the app folders)
+vault_homelab_password: ""   # the login for every service
+vault_admin_email: ""        # Seerr's admin email
+vault_backup_password: ""    # encrypts the backups; keep a copy outside this server
+# Optional: Telegram notifications. Token from @BotFather, chat id from
+# https://api.telegram.org/bot<token>/getUpdates after you message the bot.
+vault_telegram_bot_token: ""
+vault_telegram_chat_id: ""
+# Optional: an opensubtitles.com account for Bazarr's subtitles
+vault_opensubtitles_username: ""   # the username, not the email address
+vault_opensubtitles_password: ""
+# Optional: API keys for Bazarr's SubDL and Subsource providers, from a free account on
+# subdl.com and subsource.net
+vault_subdl_api_key: ""
+vault_subsource_api_key: ""
+# Optional: automatic deploys when main changes, e.g. git@github.com:<you>/homelab-infra.git
+vault_homelab_repo: ""
+# Optional, with vault_homelab_repo: a GitHub card on Homepage (release, CI, open PRs). A
+# fine-grained token for this repo only, read-only: Actions, Contents and Pull requests.
+vault_github_token: ""
+# Optional: a peer port forwarded by your VPN provider, e.g. 24257
+# vault_torrent_port: 24257

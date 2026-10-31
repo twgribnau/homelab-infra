@@ -1,0 +1,7 @@
+---
+download_stack_images:
+  gluetun: qmcgaw/gluetun:v3.41.3
+  qbittorrent: docker.io/linuxserver/qbittorrent:5.3.0_v2.1.2-ls485
+  prowlarr: docker.io/linuxserver/prowlarr:2.7.0.5723-ls166
+  flaresolverr: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+  autoheal: willfarrell/autoheal:1.2.0

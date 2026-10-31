@@ -1,0 +1,11 @@
+---
+# Homepage's apps, with the API keys the tasks before this one read. Homepage reads the file
+# on every page load, so it needs no restart.
+- name: Homepage | Write the apps and their widgets
+  ansible.builtin.template:
+    src: homepage-services.yaml.j2
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/homepage/services.yaml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0600"
+  no_log: true

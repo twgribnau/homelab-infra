@@ -1,0 +1,114 @@
+---
+- name: Ensure the monitoring stack folders exist
+  ansible.builtin.file:
+    path: "{{ homelab_stack_dirs.monitoring }}/{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(homelab_uid) }}"
+    group: "{{ item.owner | default(homelab_gid) }}"
+    mode: "0755"
+  loop:
+    - { path: "" }
+    - { path: appdata }
+    - { path: appdata/prometheus }
+    - { path: appdata/prometheus/data, owner: "{{ monitoring_stack_prometheus_uid }}" }
+    - { path: appdata/grafana }
+    - { path: appdata/grafana/data, owner: "{{ monitoring_stack_grafana_uid }}" }
+    - { path: appdata/grafana/provisioning/datasources }
+    - { path: appdata/grafana/provisioning/dashboards }
+    - { path: appdata/grafana/provisioning/alerting }
+    - { path: appdata/homepage }
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Deploy the Prometheus config
+  ansible.builtin.copy:
+    src: prometheus.yml
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/prometheus/prometheus.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  notify: Restart prometheus
+  when: homelab_monitoring | bool
+
+- name: Provision the Prometheus datasource in Grafana
+  ansible.builtin.copy:
+    src: datasources.yml
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/grafana/provisioning/datasources/prometheus.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  notify: Restart grafana
+  when: homelab_monitoring | bool
+
+- name: Provision the dashboard folder in Grafana
+  ansible.builtin.copy:
+    src: dashboards.yml
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/grafana/provisioning/dashboards/dashboards.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  notify: Restart grafana
+  when: homelab_monitoring | bool
+
+# The Homelab dashboard (also Grafana's home page). Grafana picks up changes by itself.
+- name: Provision the Homelab dashboard
+  ansible.builtin.copy:
+    src: homelab-overview.json
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/grafana/provisioning/dashboards/homelab-overview.json"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  when: homelab_monitoring | bool
+
+# Alerts go to Telegram; without a bot in the vault there are none.
+- name: Provision the alerts in Grafana
+  ansible.builtin.copy:
+    src: alerting.yml
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/grafana/provisioning/alerting/alerting.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  when: homelab_monitoring | bool and homelab_telegram | bool
+  notify: Restart grafana
+
+# Separate from docker-compose.yml so secrets aren't in a world-readable file.
+# Grafana only reads the admin login when it creates its database.
+- name: Write the Grafana secrets
+  ansible.builtin.copy:
+    content: |
+      GF_SECURITY_ADMIN_USER={{ homelab_username }}
+      GF_SECURITY_ADMIN_PASSWORD={{ homelab_password }}
+      TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token }}
+      TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id }}
+    dest: "{{ homelab_stack_dirs.monitoring }}/grafana.env"
+    mode: "0600"
+  no_log: true
+  when: homelab_monitoring | bool
+
+# services.yaml, with the apps and their API keys, comes from app_config (homepage.yml).
+- name: Deploy the Homepage settings
+  ansible.builtin.copy:
+    src: "homepage/{{ item }}"
+    dest: "{{ homelab_stack_dirs.monitoring }}/appdata/homepage/{{ item }}"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  loop: [settings.yaml, widgets.yaml, bookmarks.yaml, custom.css]
+  when: homelab_homepage | bool
+  notify: Restart homepage
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homelab_stack_dirs.monitoring }}/docker-compose.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+
+- name: Start the monitoring stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ homelab_stack_dirs.monitoring }}"
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
+    recreate: "{{ 'always' if force_recreate | default(false) | bool else 'auto' }}"

@@ -1,0 +1,138 @@
+---
+# Every few minutes the server checks GitHub. When main has new commits (a merged Renovate PR,
+# or your own push) it backs up the app data, runs the playbook and sends the result to
+# Telegram. When the run fails it restores the backup and deploys the previous commit.
+# Once: add ~/.ssh/homelab_deploy.pub on GitHub under Settings > Deploy keys (read-only).
+
+- name: Create the SSH folder
+  ansible.builtin.file:
+    path: "{{ autodeploy_key | dirname }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0700"
+
+- name: Create the deploy key
+  ansible.builtin.command: ssh-keygen -q -t ed25519 -N "" -C homelab-deploy -f {{ autodeploy_key }}
+  args:
+    creates: "{{ autodeploy_key }}"
+  become: true
+  become_user: "{{ homelab_user }}"
+
+# Clone only: a manual run must not move this copy, or the timer would miss the change.
+- name: Clone the repo for deploys
+  ansible.builtin.git:
+    repo: "{{ homelab_repo }}"
+    dest: "{{ autodeploy_dir }}"
+    version: main
+    key_file: "{{ autodeploy_key }}"
+    accept_hostkey: true
+    update: false
+  become: true
+  become_user: "{{ homelab_user }}"
+
+- name: Install restic for the backups
+  ansible.builtin.apt:
+    name: restic
+
+- name: Install Ansible for the deploys
+  ansible.builtin.pip:
+    requirements: "{{ playbook_dir }}/requirements.txt"
+    virtualenv: "{{ autodeploy_dir }}/.venv"
+    virtualenv_command: python3 -m venv
+  become: true
+  become_user: "{{ homelab_user }}"
+
+- name: Give the deploys the vault password
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/.vault_pass"
+    dest: "{{ autodeploy_dir }}/.vault_pass"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0600"
+  no_log: true
+
+# The secrets stay in your private repo; the deploys use the same files.
+- name: Give the deploys the secrets
+  ansible.builtin.file:
+    src: "{{ (playbook_dir ~ '/secrets') | realpath }}"
+    dest: "{{ autodeploy_dir }}/secrets"
+    state: link
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    follow: false
+
+- name: Write the backup and Telegram settings for the deploys
+  ansible.builtin.copy:
+    content: |
+      RESTIC_REPOSITORY={{ autodeploy_backup_repository }}
+      RESTIC_PASSWORD={{ vault_backup_password }}
+      TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token }}
+      TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id }}
+    dest: /etc/homelab-autodeploy.env
+    mode: "0600"
+  no_log: true
+
+- name: Install the deploy script
+  ansible.builtin.template:
+    src: homelab-autodeploy.sh.j2
+    dest: /usr/local/bin/homelab-autodeploy
+    mode: "0755"
+
+- name: Install the systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop: [homelab-autodeploy.service, homelab-autodeploy.timer]
+
+# Only the timer: the service may be the very run that is executing this playbook.
+- name: Start the timer
+  ansible.builtin.systemd_service:
+    name: homelab-autodeploy.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# Telegram commands /deploy, /status and /log, answered in your chat only.
+- name: Telegram bot
+  when: homelab_telegram | bool
+  block:
+    - name: Write the bot's Telegram settings
+      ansible.builtin.copy:
+        content: |
+          TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token }}
+          TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id }}
+        dest: /etc/homelab-bot.env
+        mode: "0600"
+      register: _autodeploy_bot_env
+      no_log: true
+
+    - name: Install the bot
+      ansible.builtin.copy:
+        src: homelab-bot.py
+        dest: /usr/local/bin/homelab-bot
+        mode: "0755"
+      register: _autodeploy_bot_script
+
+    - name: Allow the bot to start deploys
+      ansible.builtin.template:
+        src: homelab-bot.rules.j2
+        dest: /etc/polkit-1/rules.d/50-homelab-bot.rules
+        mode: "0644"
+
+    - name: Install the bot's systemd unit
+      ansible.builtin.template:
+        src: homelab-bot.service.j2
+        dest: /etc/systemd/system/homelab-bot.service
+        mode: "0644"
+      register: _autodeploy_bot_unit
+
+    - name: Start the bot
+      ansible.builtin.systemd_service:
+        name: homelab-bot
+        enabled: true
+        state: >-
+          {{ 'restarted' if (_autodeploy_bot_env, _autodeploy_bot_script, _autodeploy_bot_unit)
+             | selectattr('changed') | list else 'started' }}
+        daemon_reload: true

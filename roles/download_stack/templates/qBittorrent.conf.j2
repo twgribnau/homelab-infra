@@ -1,0 +1,11 @@
+[LegalNotice]
+Accepted=true
+
+[BitTorrent]
+Session\DefaultSavePath=/data/torrents
+Session\Port={{ homelab_torrent_port }}
+
+[WebUI]
+Port={{ homelab_ports.qbittorrent }}
+Username={{ homelab_username }}
+Password_PBKDF2="{{ homelab_password | qbt_password_hash(inventory_hostname) }}"

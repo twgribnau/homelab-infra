@@ -1,0 +1,85 @@
+---
+# Default quality profile in Radarr, Sonarr and Seerr. Recyclarr fills it with TRaSH's profile
+# and adds a smaller WEB-only one (templates/recyclarr.yml.j2).
+app_config_quality_profile: HD-1080p
+
+# https://trash-guides.info/Downloaders/qBittorrent/
+app_config_qbittorrent_preferences:
+  save_path: /data/torrents
+  auto_tmm_enabled: true
+  torrent_changed_tmm_enabled: true
+  save_path_changed_tmm_enabled: true
+  category_changed_tmm_enabled: true
+  upnp: false
+  # Torrents nobody is downloading from don't take one of the 3 upload slots.
+  dont_count_slow_torrents: true
+  # Stop seeding at ratio 2 or after 7 days, whichever comes first. Radarr and Sonarr then
+  # remove their stopped torrents; the library copies stay (hardlinks).
+  max_ratio_enabled: true
+  max_ratio: 2
+  max_seeding_time_enabled: true
+  max_seeding_time: 10080   # minutes
+  max_ratio_act: 0          # 0 = stop the torrent
+
+# What goes to Telegram (when it is set up): imports, imports that need you, errors and
+# app updates. Sonarr sends one message per import, so a season pack is one message.
+app_config_telegram_events:
+  radarr: [onDownload, onUpgrade, onManualInteractionRequired, onHealthIssue, onHealthRestored, onApplicationUpdate]
+  sonarr: [onImportComplete, onManualInteractionRequired, onHealthIssue, onHealthRestored, onApplicationUpdate]
+  prowlarr: [onHealthIssue, onHealthRestored, onApplicationUpdate]
+# Seerr: new requests and requests it could not send to Radarr/Sonarr (2 + 16 + 128).
+app_config_seerr_telegram_types: 146
+
+# Bazarr's language profile, the default for every movie and series. Subtitles are searched
+# for each language (ISO 639-1 codes). Changing the languages later is done in Bazarr itself.
+app_config_bazarr_profile:
+  name: Dutch and English
+  languages: [nl, en]
+# Bazarr's subtitle providers that need no account and have Dutch: subtitles already inside the
+# video files, subf2m (the Subscene archive) and Gestdown (Addic7ed, series only). Providers you
+# enable in Bazarr itself are kept, except the dead ones in app_config_bazarr_providers_dead.
+app_config_bazarr_providers: [embeddedsubtitles, subf2m, gestdown]
+app_config_bazarr_providers_dead: [tvsubtitles, yifysubtitles]
+# Plus opensubtitles.com, enabled when the vault has an account.
+app_config_opensubtitles_username: "{{ vault_opensubtitles_username | default('') }}"
+app_config_opensubtitles_password: "{{ vault_opensubtitles_password | default('') }}"
+# Plus SubDL and Subsource (large Dutch collections), each enabled when the vault has its API key.
+app_config_subdl_api_key: "{{ vault_subdl_api_key | default('') }}"
+app_config_subsource_api_key: "{{ vault_subsource_api_key | default('') }}"
+
+# Homepage's GitHub card (latest release, CI on main, open PRs), shown when the vault has a token.
+app_config_github_repo: "{{ homelab_repo | regex_replace('^git@[^:]+:', '') | regex_replace('\\.git$', '') }}"
+app_config_github_token: "{{ vault_github_token | default('') }}"
+
+# Prowlarr's indexers (the sites it searches), from secrets/indexers.yml. Indexers you add in
+# Prowlarr itself are kept. Example: secrets.example/indexers.yml
+app_config_prowlarr_indexers: []
+
+app_config_jellyfin_server_name: Homelab
+app_config_jellyfin_language: en
+app_config_jellyfin_country: NL
+# Created when missing. Libraries, users and profiles you add yourself are left alone.
+app_config_jellyfin_libraries:
+  - { name: Movies, type: movies, path: /data/media/movies }
+  - { name: Series, type: tvshows, path: /data/media/series }
+# VA-API on the Intel iGPU. HardwareAccelerationType: none = software transcoding.
+app_config_jellyfin_encoding:
+  HardwareAccelerationType: vaapi
+  VaapiDevice: /dev/dri/renderD128
+  EnableHardwareEncoding: true
+  HardwareDecodingCodecs: [h264, hevc, mpeg2video, vc1, vp8, vp9]
+  EnableDecodingColorDepth10Hevc: true
+  EnableDecodingColorDepth10Vp9: true
+
+# TRaSH blocks 1080p x265 encodes; false keeps them allowed (small files).
+app_config_recyclarr_block_x265_hd: false
+# Upgrade files until TRaSH's score cutoff (usually to bigger releases).
+app_config_recyclarr_upgrades: true
+# While x265 is allowed: 720p/1080p minimum size in MB per minute (TRaSH's would reject it).
+app_config_recyclarr_x265_min_size: 4
+# File size in MB per minute of video; releases above the max are skipped.
+# 15 is ~375 MB per 25-minute episode or ~1.8 GB per 2-hour movie; 40 is ~1 GB or ~4.8 GB.
+app_config_recyclarr_preferred_size: 15
+app_config_recyclarr_max_size:
+  720p: 25
+  1080p: 40

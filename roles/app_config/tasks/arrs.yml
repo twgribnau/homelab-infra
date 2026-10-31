@@ -1,0 +1,100 @@
+---
+- name: Arr | Import with hardlinks
+  servarr_resource:
+    url: "{{ app_config_urls[item.name] }}"
+    api_key: "{{ _app_config_api_keys[item.name] }}"
+    endpoint: config/mediamanagement
+    singleton: true
+    body:
+      copyUsingHardlinks: true
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Arr | Root folder
+  servarr_resource:
+    url: "{{ app_config_urls[item.name] }}"
+    api_key: "{{ _app_config_api_keys[item.name] }}"
+    endpoint: rootfolder
+    match_key: path
+    body:
+      path: "{{ item.root_folder }}"
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# qBittorrent runs in gluetun's network namespace, so it is reached as "gluetun".
+- name: Arr | qBittorrent download client
+  servarr_resource:
+    url: "{{ app_config_urls[item.name] }}"
+    api_key: "{{ _app_config_api_keys[item.name] }}"
+    endpoint: downloadclient
+    schema:
+      implementation: QBittorrent
+    body:
+      name: qBittorrent
+      enable: true
+      protocol: torrent
+      priority: 1
+      removeCompletedDownloads: true
+      removeFailedDownloads: true
+    fields: >-
+      {{ {'host': 'gluetun', 'port': homelab_ports.qbittorrent, 'useSsl': false,
+          'username': homelab_username, 'password': homelab_password,
+          item.category_field: item.category} }}
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Arr | Refresh Jellyfin after imports
+  servarr_resource:
+    url: "{{ app_config_urls[item.name] }}"
+    api_key: "{{ _app_config_api_keys[item.name] }}"
+    endpoint: notification
+    schema:
+      implementation: MediaBrowser
+    body:
+      name: Emby / Jellyfin
+      onDownload: true
+      onUpgrade: true
+      onRename: true
+    fields:
+      host: jellyfin
+      port: 8096
+      useSsl: false
+      apiKey: "{{ _app_config_jellyfin_api_key }}"
+      updateLibrary: true
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: _app_config_jellyfin_api_key is defined   # set by jellyfin.yml
+
+# Only the TRaSH profiles from Recyclarr are left to choose from.
+- name: Arr | Remove the stock quality profiles
+  servarr_resource:
+    url: "{{ app_config_urls[item.0.name] }}"
+    api_key: "{{ _app_config_api_keys[item.0.name] }}"
+    endpoint: qualityprofile
+    body:
+      name: "{{ item.1 }}"
+    state: absent
+  loop: "{{ app_config_arrs | product(app_config_stock_profiles) | list }}"
+  loop_control:
+    label: "{{ item.0.name }}: {{ item.1 }}"
+
+- name: Arr | Telegram notifications
+  servarr_resource:
+    url: "{{ app_config_urls[item.name] }}"
+    api_key: "{{ _app_config_api_keys[item.name] }}"
+    endpoint: notification
+    schema:
+      implementation: Telegram
+    body: "{{ {'name': 'Telegram'} | combine(dict(app_config_telegram_events[item.name] | product([true]))) }}"
+    fields:
+      botToken: "{{ homelab_telegram_bot_token }}"
+      chatId: "{{ homelab_telegram_chat_id }}"
+      includeAppNameInTitle: true
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: homelab_telegram | bool

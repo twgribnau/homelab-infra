@@ -1,0 +1,74 @@
+---
+# Settings shared by several roles. Role-specific settings live in roles/*/defaults.
+
+homelab_user: "{{ vault_homelab_user }}"   # the server's login user
+homelab_uid: 1000
+homelab_gid: 1000
+homelab_tz: Europe/Amsterdam
+
+homelab_base_dir: "/home/{{ homelab_user }}/srv"
+homelab_stack_dirs:
+  download: "{{ homelab_base_dir }}/download-stack"
+  media: "{{ homelab_base_dir }}/media-stack"
+  monitoring: "{{ homelab_base_dir }}/monitoring-stack"
+# qBittorrent and the *arrs mount this one folder as /data, so imports are hardlinks.
+homelab_data_dir: "{{ homelab_base_dir }}/media-data"
+homelab_docker_network: homelab_network
+
+# One login for every service, also used by the services to talk to each other.
+homelab_username: "{{ homelab_user }}"
+homelab_password: "{{ vault_homelab_password }}"
+homelab_admin_email: "{{ vault_admin_email }}"
+
+# Telegram bot for notifications. Optional: without both in the vault, nothing is sent.
+homelab_telegram_bot_token: "{{ vault_telegram_bot_token | default('') }}"
+homelab_telegram_chat_id: "{{ vault_telegram_chat_id | default('') | string }}"
+homelab_telegram: "{{ homelab_telegram_bot_token != '' and homelab_telegram_chat_id != '' }}"
+
+# The server runs the playbook itself when this repo's main branch changes (roles/autodeploy).
+# Optional: without the repo's SSH address in the vault, there are no automatic deploys.
+homelab_repo: "{{ vault_homelab_repo | default('') }}"
+
+# The test run on GitHub (.github/workflows/ci.yml) has no GPU: Jellyfin runs without /dev/dri.
+homelab_ci: false
+
+# Optional parts. The search, download and watch apps (qBittorrent, Prowlarr, Radarr, Sonarr,
+# Jellyfin, Seerr) are always there. Change these in secrets/local.yml.
+homelab_bazarr: true       # subtitles
+homelab_monitoring: true   # Grafana and Prometheus
+homelab_homepage: true     # a start page with every app
+# Tailscale: the web UIs at https://<host>.<tailnet>.ts.net, from anywhere. Without it they
+# are on the LAN at http://<server>:<port>.
+homelab_tailscale: true
+# qBittorrent behind a WireGuard VPN, when there is a secrets/wg0.conf.
+homelab_vpn: "{{ (playbook_dir ~ '/secrets/wg0.conf') is file }}"
+# The optional web UIs that are off, left out of Tailscale and Homepage.
+homelab_apps_off: >-
+  {{ (['bazarr'] if not homelab_bazarr | bool else [])
+     + (['grafana'] if not homelab_monitoring | bool else [])
+     + (['homepage'] if not homelab_homepage | bool else []) }}
+
+# With Tailscale the admin UIs are reachable through Tailscale HTTPS only; Jellyfin always
+# also on the LAN.
+homelab_publish_ip: "{{ '127.0.0.1' if homelab_tailscale | bool else '0.0.0.0' }}"
+homelab_jellyfin_publish_ip: 0.0.0.0
+# The name in the apps' links: the Tailscale name, else the server's LAN address.
+homelab_host: "{{ tailscale_host if homelab_tailscale | bool else ansible_facts.default_ipv4.address }}"
+
+# Host ports. qBittorrent's must equal its internal WebUI port (Host-header check).
+homelab_ports:
+  qbittorrent: 8080
+  prowlarr: 9696
+  radarr: 7878
+  sonarr: 8989
+  bazarr: 6767
+  jellyfin: 8096
+  seerr: 5055
+  grafana: 3000
+  prometheus: 9090
+  homepage: 3001
+
+# Peer port qBittorrent listens on inside the VPN. A port forwarded by the VPN provider
+# (AirVPN: Client Area > Ports) in the vault makes it reachable for other peers.
+homelab_torrent_port: "{{ vault_torrent_port | default(6881) | int }}"
+homelab_torrent_port_forwarded: "{{ vault_torrent_port is defined }}"

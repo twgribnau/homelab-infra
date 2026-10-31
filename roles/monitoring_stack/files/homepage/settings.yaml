@@ -1,0 +1,19 @@
+---
+# https://gethomepage.dev/configs/settings/
+title: Homelab
+theme: dark
+color: slate
+# A night sky (Unsplash), dimmed so the cards stay readable; the cards blur what is behind them.
+background:
+  image: https://images.unsplash.com/photo-1502790671504-542ad42d5189?auto=format&fit=crop&w=2560&q=80
+  opacity: 60
+cardBlur: md
+headerStyle: boxedWidgets
+# A dot per app: green when its web UI answers (siteMonitor in services.yaml).
+statusStyle: dot
+# A tab per group, every tile the same size.
+useEqualHeights: true
+layout:
+  Media: { tab: Media, style: row, columns: 5 }
+  Downloads: { tab: Downloads, style: row, columns: 5 }
+  System: { tab: System, style: row, columns: 5 }

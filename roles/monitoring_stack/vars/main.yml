@@ -1,0 +1,4 @@
+---
+# User ids the upstream images run as.
+monitoring_stack_prometheus_uid: 65534
+monitoring_stack_grafana_uid: 472

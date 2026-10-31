@@ -1,0 +1,10 @@
+// {{ ansible_managed }}
+// Lets the Telegram bot's /deploy start the deploy service, and nothing else.
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "homelab-autodeploy.service" &&
+      action.lookup("verb") == "start" &&
+      subject.user == "{{ homelab_user }}") {
+    return polkit.Result.YES;
+  }
+});

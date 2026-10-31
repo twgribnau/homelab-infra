@@ -1,0 +1,47 @@
+---
+# ansible-playbook provision.yml
+#
+# Runs as root, so the Docker socket works on the very first run. Paths and ownership
+# come from inventory/group_vars/homelab.
+
+- name: Provision the homelab
+  hosts: homelab
+  become: true
+
+  pre_tasks:
+    # Your secrets and own settings: every .yml in secrets/, a link to your private repo (README).
+    - name: Check that secrets/vault.yml exists
+      ansible.builtin.assert:
+        that: (playbook_dir ~ '/secrets/vault.yml') is file
+        fail_msg: No secrets/vault.yml. Run ./setup.sh first.
+        quiet: true
+      tags: [always]
+
+    - name: Read your secrets and settings
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      loop: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/secrets/*.yml') | sort }}"
+      no_log: true
+      tags: [always]
+
+    # A run you start by hand waits for an automatic deploy that is busy (roles/autodeploy).
+    - name: Wait for an automatic deploy to finish
+      ansible.builtin.systemd_service:
+        name: homelab-autodeploy
+      register: _autodeploy_state
+      until: _autodeploy_state.status.ActiveState | default('') != 'activating'
+      retries: 60
+      delay: 10
+      check_mode: false
+      when: lookup('env', 'HOMELAB_AUTODEPLOY') == ''
+      tags: [always]
+
+  roles:
+    - { role: tailscale, tags: [tailscale], when: homelab_tailscale | bool }
+    - { role: docker, tags: [docker] }
+    - { role: homelab_common, tags: [always] }
+    - { role: download_stack, tags: [download] }
+    - { role: media_stack, tags: [media] }
+    - { role: monitoring_stack, tags: [monitoring], when: homelab_monitoring | bool or homelab_homepage | bool }
+    - { role: app_config, tags: [apps] }
+    - { role: autodeploy, tags: [autodeploy], when: homelab_repo | default('') | length > 0 }

@@ -1,0 +1,163 @@
+---
+# Ansible sets up the server: the admin (shared login), libraries, name and transcoding,
+# plus an API key for Radarr/Sonarr. Users and profiles you add yourself are left alone.
+
+- name: Jellyfin | Read the setup state
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.jellyfin }}/System/Info/Public"
+  register: _app_config_jf_info
+  check_mode: false
+
+- name: Jellyfin | Complete the setup wizard (fresh install)
+  when: not _app_config_jf_info.json.StartupWizardCompleted
+  block:
+    - name: Jellyfin | Wizard - language and metadata
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Startup/Configuration"
+        method: POST
+        body_format: json
+        body:
+          UICulture: en-US
+          MetadataCountryCode: "{{ app_config_jellyfin_country }}"
+          PreferredMetadataLanguage: "{{ app_config_jellyfin_language }}"
+        status_code: [200, 204]
+
+    # Jellyfin creates the first user on this GET; the POST below sets its login.
+    - name: Jellyfin | Wizard - create the admin
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Startup/User"
+
+    - name: Jellyfin | Wizard - set the admin login
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Startup/User"
+        method: POST
+        body_format: json
+        body:
+          Name: "{{ homelab_username }}"
+          Password: "{{ homelab_password }}"
+        status_code: [200, 204]
+      no_log: true
+
+    - name: Jellyfin | Wizard - remote access
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Startup/RemoteAccess"
+        method: POST
+        body_format: json
+        body:
+          EnableRemoteAccess: true
+          EnableAutomaticPortMapping: false
+        status_code: [200, 204]
+
+    - name: Jellyfin | Wizard - finish
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Startup/Complete"
+        method: POST
+        status_code: [200, 204]
+      changed_when: true
+
+- name: Jellyfin | Sign in as the admin
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.jellyfin }}/Users/AuthenticateByName"
+    method: POST
+    headers:
+      Authorization: "{{ app_config_jellyfin_client }}"
+    body_format: json
+    body:
+      Username: "{{ homelab_username }}"
+      Pw: "{{ homelab_password }}"
+  register: _app_config_jf_login
+  check_mode: false
+  no_log: true
+
+- name: Jellyfin | Configure the server
+  vars:
+    _auth: '{{ app_config_jellyfin_client }}, Token="{{ _app_config_jf_login.json.AccessToken }}"'
+  block:
+    - name: Jellyfin | Read the libraries
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Library/VirtualFolders"
+        headers:
+          Authorization: "{{ _auth }}"
+      register: _app_config_jf_libraries
+      check_mode: false
+
+    - name: Jellyfin | Create missing libraries
+      ansible.builtin.uri:
+        url: >-
+          {{ app_config_urls.jellyfin }}/Library/VirtualFolders?refreshLibrary=true&name={{
+          item.name | urlencode }}&collectionType={{ item.type }}&paths={{ item.path | urlencode }}
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        body_format: json
+        body:
+          LibraryOptions:
+            EnableRealtimeMonitor: true
+            PreferredMetadataLanguage: "{{ app_config_jellyfin_language }}"
+            MetadataCountryCode: "{{ app_config_jellyfin_country }}"
+        status_code: [200, 204]
+      loop: "{{ app_config_jellyfin_libraries }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.name not in _app_config_jf_libraries.json | map(attribute='Name')
+      changed_when: true
+
+    - name: Jellyfin | Read the server settings
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/System/Configuration{{ item.path }}"
+        headers:
+          Authorization: "{{ _auth }}"
+      loop: "{{ app_config_jellyfin_settings }}"
+      loop_control:
+        label: "{{ item.settings | list | join(', ') }}"
+      register: _app_config_jf_current
+      check_mode: false
+
+    - name: Jellyfin | Server name and hardware transcoding
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/System/Configuration{{ item.item.path }}"
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        body_format: json
+        body: "{{ item.json | combine(item.item.settings) }}"
+        status_code: [200, 204]
+      loop: "{{ _app_config_jf_current.results }}"
+      loop_control:
+        label: "{{ item.item.settings | list | join(', ') }}"
+      when: item.json | combine(item.item.settings) != item.json
+      changed_when: true
+
+    - name: Jellyfin | Read the API keys
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Auth/Keys"
+        headers:
+          Authorization: "{{ _auth }}"
+      register: _app_config_jf_existing_keys
+      check_mode: false
+      no_log: true
+
+    - name: Jellyfin | Create the API key for Radarr and Sonarr
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Auth/Keys?app=servarr"
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        status_code: [200, 204]
+      when: "'servarr' not in _app_config_jf_existing_keys.json.Items | map(attribute='AppName')"
+      changed_when: true
+
+    - name: Jellyfin | Read the API key
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Auth/Keys"
+        headers:
+          Authorization: "{{ _auth }}"
+      register: _app_config_jf_keys
+      check_mode: false
+      no_log: true
+
+    - name: Jellyfin | Remember the API key
+      ansible.builtin.set_fact:
+        _app_config_jellyfin_api_key: "{{ (_app_config_jf_keys.json.Items | selectattr('AppName', 'equalto', 'servarr') | first).AccessToken }}"
+      when: "'servarr' in _app_config_jf_keys.json.Items | map(attribute='AppName')"
+      no_log: true

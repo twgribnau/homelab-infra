@@ -1,0 +1,113 @@
+---
+# {{ ansible_managed }}
+# Links go to the Tailscale HTTPS addresses (or the LAN without Tailscale); widgets and status
+# dots reach the apps on the Docker network.
+{% set web = ('https://' if homelab_tailscale | bool else 'http://') ~ homelab_host %}
+{% set ts = homelab_tailscale | bool %}
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: {{ web }}:{{ 8920 if ts else homelab_ports.jellyfin }}
+        siteMonitor: http://jellyfin:8096
+        widget:
+          type: jellyfin
+          version: 2
+          url: http://jellyfin:8096
+          key: {{ _app_config_jellyfin_api_key }}
+          enableBlocks: true
+          enableNowPlaying: true
+    - Seerr:
+        icon: seerr.png
+        href: {{ web }}{{ '' if ts else ':' ~ homelab_ports.seerr }}
+        siteMonitor: http://seerr:5055
+        widget:
+          type: seerr
+          url: http://seerr:5055
+          key: {{ _app_config_seerr_key }}
+
+- Downloads:
+    - Radarr:
+        icon: radarr.png
+        href: {{ web }}:7878
+        siteMonitor: http://radarr:7878
+        widget:
+          type: radarr
+          url: http://radarr:7878
+          key: {{ _app_config_api_keys.radarr }}
+          enableQueue: true
+    - Sonarr:
+        icon: sonarr.png
+        href: {{ web }}:8989
+        siteMonitor: http://sonarr:8989
+        widget:
+          type: sonarr
+          url: http://sonarr:8989
+          key: {{ _app_config_api_keys.sonarr }}
+          enableQueue: true
+{% if homelab_bazarr | bool %}
+    - Bazarr:
+        icon: bazarr.png
+        href: {{ web }}:6767
+        siteMonitor: http://bazarr:6767
+        widget:
+          type: bazarr
+          url: http://bazarr:6767
+          key: {{ _app_config_bazarr_key }}
+{% endif %}
+    - Prowlarr:
+        icon: prowlarr.png
+        href: {{ web }}:9696
+        siteMonitor: http://prowlarr:9696
+        widget:
+          type: prowlarr
+          url: http://prowlarr:9696
+          key: {{ _app_config_api_keys.prowlarr }}
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: {{ web }}:8080
+        siteMonitor: http://gluetun:{{ homelab_ports.qbittorrent }}
+        widget:
+          type: qbittorrent
+          url: http://gluetun:{{ homelab_ports.qbittorrent }}
+          username: {{ homelab_username | to_json }}
+          password: {{ homelab_password | to_json }}
+
+{% if homelab_monitoring | bool or (app_config_github_repo and app_config_github_token) %}
+- System:
+{% endif %}
+{% if homelab_monitoring | bool %}
+    - Grafana:
+        icon: grafana.png
+        href: {{ web }}:3000
+        siteMonitor: http://grafana:3000
+        widget:
+          type: grafana
+          version: 2
+          url: http://grafana:3000
+          username: {{ homelab_username | to_json }}
+          password: {{ homelab_password | to_json }}
+    - Prometheus:
+        icon: prometheus.png
+        siteMonitor: http://prometheus:9090
+        widget:
+          type: prometheus
+          url: http://prometheus:9090
+{% endif %}
+{% if app_config_github_repo and app_config_github_token %}
+    # The latest release, from GitHub's API with a read-only token (app_config_github_token).
+    # GitHub rejects requests without a User-Agent, and Homepage sends none by itself.
+    - GitHub:
+        icon: github.png
+        href: https://github.com/{{ app_config_github_repo }}/releases
+        widget:
+          type: customapi
+          url: https://api.github.com/repos/{{ app_config_github_repo }}/releases/latest
+          headers:
+            Authorization: Bearer {{ app_config_github_token }}
+            Accept: application/vnd.github+json
+            User-Agent: homelab-homepage
+          refreshInterval: 300000
+          mappings:
+            - { field: tag_name, label: Release }
+            - { field: published_at, label: Released, format: relativeDate, style: short }
+{% endif %}

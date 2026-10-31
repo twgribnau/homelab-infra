@@ -1,0 +1,49 @@
+# Publishes a release when you want one: Actions → Release → Run workflow. It tags main with the
+# next version and writes the release notes from the PRs merged since the previous release.
+# "auto" picks the version from the commit titles since then: feat!: (or BREAKING CHANGE) a
+# major, feat: a minor, anything else a patch. The server deploys main either way.
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version to raise
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # all commits and tags
+
+      - name: Tag and publish the next version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          # The first release is v1.0.0.
+          if ! last=$(git describe --tags --abbrev=0 2>/dev/null); then
+            gh release create v1.0.0 --target "$GITHUB_SHA" --title v1.0.0 --generate-notes
+            exit 0
+          fi
+          log=$(git log --format='%s%n%b' "$last..HEAD")
+          [ -n "$log" ] || { echo "::error::Nothing new since $last"; exit 1; }
+          if [ "$BUMP" = auto ]; then
+            if grep -qE '^[a-z]+(\(.*\))?!:|^BREAKING CHANGE' <<<"$log"; then BUMP=major
+            elif grep -qE '^feat(\(.*\))?:' <<<"$log"; then BUMP=minor
+            else BUMP=patch; fi
+          fi
+          IFS=. read -r major minor patch <<<"${last#v}"
+          case $BUMP in
+            major) next="v$((major + 1)).0.0" ;;
+            minor) next="v$major.$((minor + 1)).0" ;;
+            patch) next="v$major.$minor.$((patch + 1))" ;;
+          esac
+          gh release create "$next" --target "$GITHUB_SHA" --title "$next" --generate-notes
+          echo "Released $next ($BUMP, after $last)" >>"$GITHUB_STEP_SUMMARY"

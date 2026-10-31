@@ -1,0 +1,22 @@
+---
+- name: Ensure the shared Docker network exists
+  community.docker.docker_network:
+    name: "{{ homelab_docker_network }}"
+
+# TRaSH layout. 0775 matches the UMASK=002 the containers run with.
+- name: Ensure the media data folders exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0775"
+  loop:
+    - "{{ homelab_base_dir }}"
+    - "{{ homelab_data_dir }}"
+    - "{{ homelab_data_dir }}/torrents"
+    - "{{ homelab_data_dir }}/torrents/movies"
+    - "{{ homelab_data_dir }}/torrents/tv"
+    - "{{ homelab_data_dir }}/media"
+    - "{{ homelab_data_dir }}/media/movies"
+    - "{{ homelab_data_dir }}/media/series"

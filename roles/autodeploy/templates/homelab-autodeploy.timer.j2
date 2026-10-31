@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Check GitHub for homelab changes every {{ autodeploy_interval }}
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec={{ autodeploy_interval }}
+
+[Install]
+WantedBy=timers.target

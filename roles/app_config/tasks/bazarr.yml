@@ -1,0 +1,80 @@
+---
+# Connects Bazarr to Radarr and Sonarr, sets the shared login on a fresh install, adds the
+# language profile every movie and series gets and enables the subtitle providers (OpenSubtitles,
+# SubDL and Subsource when the vault has an account or key). Bazarr only gets the settings that differ; other profiles are
+# left alone.
+
+- name: Bazarr | Read the config file
+  ansible.builtin.slurp:
+    src: "{{ homelab_stack_dirs.media }}/appdata/bazarr/config/config.yaml"
+  register: _app_config_bazarr_config
+  no_log: true
+
+- name: Bazarr | Remember the API key
+  ansible.builtin.set_fact:
+    _app_config_bazarr_key: "{{ (_app_config_bazarr_config.content | b64decode | from_yaml).auth.apikey }}"
+  no_log: true
+
+- name: Bazarr | Read the settings, languages and language profiles
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.bazarr }}/api/system/{{ item }}"
+    headers:
+      X-API-KEY: "{{ _app_config_bazarr_key }}"
+  loop: [settings, languages, languages/profiles]
+  register: _app_config_bazarr_read
+  check_mode: false
+  no_log: true
+
+- name: Bazarr | Settings
+  vars:
+    _current: "{{ _app_config_bazarr_read.results[0].json }}"
+    _languages: "{{ _app_config_bazarr_read.results[1].json | selectattr('enabled') | map(attribute='code2') }}"
+    _profiles: "{{ _app_config_bazarr_read.results[2].json }}"
+    _profile: "{{ _profiles | selectattr('name', 'equalto', app_config_bazarr_profile.name) | first | default(none) }}"
+    _profile_id: "{{ _profile.profileId if _profile else (_profiles | map(attribute='profileId') | max | default(0)) + 1 }}"
+    _opensubtitles: "{{ app_config_opensubtitles_username != '' }}"
+    _wanted:
+      general:
+        use_radarr: true
+        use_sonarr: true
+        movie_default_enabled: true
+        movie_default_profile: "{{ _profile_id | int }}"
+        serie_default_enabled: true
+        serie_default_profile: "{{ _profile_id | int }}"
+        enabled_providers: >-
+          {{ (_current.general.enabled_providers + app_config_bazarr_providers
+              + (['opensubtitlescom'] if _opensubtitles else [])
+              + (['subdl'] if app_config_subdl_api_key else [])
+              + (['subsource'] if app_config_subsource_api_key else [])) | unique
+              | difference(app_config_bazarr_providers_dead) }}
+      # base_url "" as Bazarr stores it: it strips the trailing slash of "/".
+      radarr: { ip: radarr, port: 7878, base_url: "", ssl: false, apikey: "{{ _app_config_api_keys.radarr }}" }
+      sonarr: { ip: sonarr, port: 8989, base_url: "", ssl: false, apikey: "{{ _app_config_api_keys.sonarr }}" }
+      # A fresh install has no login yet; an existing one is left as it is.
+      auth: >-
+        {{ {'type': 'form', 'username': homelab_username, 'password': homelab_password}
+           if _current.auth.type is none else {} }}
+      opensubtitlescom: >-
+        {{ {'username': app_config_opensubtitles_username, 'password': app_config_opensubtitles_password}
+           if _opensubtitles else {} }}
+      subdl: "{{ {'api_key': app_config_subdl_api_key} if app_config_subdl_api_key else {} }}"
+      subsource: "{{ {'apikey': app_config_subsource_api_key} if app_config_subsource_api_key else {} }}"
+    # Bazarr replaces all enabled languages and all profiles with what it gets.
+    _form: >-
+      {{ _wanted | bazarr_settings_form(_current)
+         | combine({'languages-enabled': _languages | union(app_config_bazarr_profile.languages)}
+                   if app_config_bazarr_profile.languages | difference(_languages) else {})
+         | combine({'languages-profiles': (_profiles + [app_config_bazarr_profile.languages
+                    | bazarr_language_profile(_profile_id | int, app_config_bazarr_profile.name)]) | to_json}
+                   if not _profile else {}) }}
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.bazarr }}/api/system/settings"
+    method: POST
+    headers:
+      X-API-KEY: "{{ _app_config_bazarr_key }}"
+    body_format: form-urlencoded
+    body: "{{ _form }}"
+    status_code: 204
+  when: _form | length > 0
+  changed_when: true
+  no_log: true

@@ -1,0 +1,8 @@
+*.retry
+.vault_pass
+# A link to your private secrets repo (README).
+/secrets
+__pycache__/
+*.pyc
+.vscode/
+.venv/

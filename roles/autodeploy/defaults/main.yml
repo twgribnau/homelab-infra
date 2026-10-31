@@ -1,0 +1,10 @@
+---
+# The server's own copy of the repo. Deploys run from here, never from your working copy.
+autodeploy_dir: "{{ homelab_base_dir }}/homelab-infra"
+autodeploy_interval: 10min
+autodeploy_key: "/home/{{ homelab_user }}/.ssh/homelab_deploy"
+# restic repository for the backup taken before each deploy. A folder now; later for example
+# rclone:gdrive:homelab (Google Drive) or another disk.
+autodeploy_backup_repository: /backup/restic
+# The repo on the web, for commit links in Telegram messages (git@github.com:you/repo.git -> https://github.com/you/repo).
+autodeploy_web_url: "{{ homelab_repo | regex_replace('^git@([^:]+):', 'https://\\1/') | regex_replace('\\.git$', '') }}"

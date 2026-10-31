@@ -1,0 +1,19 @@
+---
+- name: Recyclarr | Write the config
+  ansible.builtin.template:
+    src: recyclarr.yml.j2
+    dest: "{{ homelab_stack_dirs.media }}/appdata/recyclarr/recyclarr.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0600"
+  diff: false   # contains API keys
+
+# Recyclarr also syncs on its own schedule; this applies the config right away.
+- name: Recyclarr | Sync TRaSH profiles, custom formats and naming
+  community.docker.docker_compose_v2_exec:
+    project_src: "{{ homelab_stack_dirs.media }}"
+    service: recyclarr
+    command: recyclarr sync
+  register: _app_config_recyclarr
+  changed_when: _app_config_recyclarr.stdout is search('(Created|Updated|Deleted) [1-9]|Total of [1-9]')
+  when: not ansible_check_mode

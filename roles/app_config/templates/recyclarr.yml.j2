@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://schemas.recyclarr.dev/v8/config-schema.json
+# {{ ansible_managed }}
+# Based on the official TRaSH templates:
+#   radarr: hd-bluray-web            https://trash-guides.info/Radarr/radarr-setup-quality-profiles/#hd-bluray-web
+#   sonarr: web-1080p-alternative    https://trash-guides.info/Sonarr/sonarr-setup-quality-profiles/
+# The main profile is named {{ app_config_quality_profile }} (the Seerr default). The WEB-only
+# profile is a smaller choice. No Remux or 2160p profiles: those files are 20-80 GB.
+{% macro sizes() %}
+      qualities:
+{% for q in app_config_recyclarr_small_qualities %}
+        - name: {{ q }}
+{% if not app_config_recyclarr_block_x265_hd | bool %}
+          min: {{ app_config_recyclarr_x265_min_size }}
+{% endif %}
+          preferred: {{ app_config_recyclarr_preferred_size }}
+          max: {{ app_config_recyclarr_max_size['1080p' if '1080p' in q else '720p'] }}
+{% endfor %}
+{% endmacro %}
+
+radarr:
+  radarr:
+    base_url: http://radarr:7878
+    api_key: {{ _app_config_api_keys.radarr }}
+    delete_old_custom_formats: true
+
+    quality_definition:
+      type: movie
+{{ sizes() }}
+    quality_profiles:
+      - trash_id: d1d67249d3890e49bc12e275d989a7e9  # HD Bluray + WEB
+        name: {{ app_config_quality_profile }}
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: {{ app_config_recyclarr_upgrades | bool | lower }}
+      - trash_id: e8c5acb741363a0dbda67d3978f4912f  # WEB 1080p
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: {{ app_config_recyclarr_upgrades | bool | lower }}
+
+    custom_format_groups:
+      add:
+        # The TRaSH profile pulls this group in implicitly; it is listed so x265 (HD) can be excluded.
+        - trash_id: f8bf8eab4617f12dfdbd16303d8da245  # [Optional] Golden Rule HD
+{% if not app_config_recyclarr_block_x265_hd | bool %}
+          exclude:
+            - dc98083864ea246d05a42df0d05f81cc  # x265 (HD)
+{% endif %}
+        - trash_id: a3ac6af01d78e4f21fcb75f601ac96df  # [Unwanted] Unwanted Formats (BR-DISK, LQ, 3D, Extras, Upscaled, ...)
+
+    media_naming:
+      folder: jellyfin-imdb
+      movie:
+        rename: true
+        standard: jellyfin-imdb
+
+sonarr:
+  sonarr:
+    base_url: http://sonarr:8989
+    api_key: {{ _app_config_api_keys.sonarr }}
+    delete_old_custom_formats: true
+
+    quality_definition:
+      type: series
+{{ sizes() }}
+    quality_profiles:
+      - trash_id: 9d142234e45d6143785ac55f5a9e8dc9  # WEB-1080p (Alternative): WEB + Bluray 720p/1080p
+        name: {{ app_config_quality_profile }}
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: {{ app_config_recyclarr_upgrades | bool | lower }}
+      - trash_id: 72dae194fc92bf828f32cde7744e51a1  # WEB-1080p: WEB 1080p only
+        reset_unmatched_scores:
+          enabled: true
+        upgrade:
+          allowed: {{ app_config_recyclarr_upgrades | bool | lower }}
+
+    custom_format_groups:
+      add:
+        # The TRaSH profile pulls this group in implicitly; it is listed so x265 (HD) can be excluded.
+        - trash_id: 158188097a58d7687dee647e04af0da3  # [Optional] Golden Rule HD
+{% if not app_config_recyclarr_block_x265_hd | bool %}
+          exclude:
+            - 47435ece6b99a0b477caf360e79ba0bb  # x265 (HD)
+{% endif %}
+        - trash_id: 74aff4168620ed49dcc67e92b2c2a5b4  # [Optional] Language Profiles
+        - trash_id: 85fae4a2294965b75710ef2989c850eb  # [Streaming Services] HD/UHD boost
+        - trash_id: 59c3af66780d08332fdc64e68297098f  # [Unwanted] Unwanted Formats (BR-DISK, LQ, Extras, Upscaled, ...)
+
+    media_naming:
+      series: jellyfin-tvdb
+      season: default
+      episodes:
+        rename: true
+        standard: default
+        daily: default
+        anime: default

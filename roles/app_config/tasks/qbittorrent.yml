@@ -1,0 +1,9 @@
+---
+- name: Set qBittorrent preferences and download categories
+  qbittorrent_config:
+    url: "{{ app_config_urls.qbittorrent }}"
+    username: "{{ homelab_username }}"
+    password: "{{ homelab_password }}"
+    # The peer port too: qBittorrent reads it from its config file only on the very first start.
+    preferences: "{{ app_config_qbittorrent_preferences | combine({'listen_port': homelab_torrent_port | int}) }}"
+    categories: "{{ dict(app_config_arrs | map(attribute='category') | zip(app_config_arrs | map(attribute='download_dir'))) }}"

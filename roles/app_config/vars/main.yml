@@ -1,0 +1,44 @@
+---
+# Fixed wiring between the apps. Settings you might change are in defaults/main.yml.
+
+# Ansible talks to each app on its published port on the host.
+app_config_urls:
+  qbittorrent: "http://127.0.0.1:{{ homelab_ports.qbittorrent }}"
+  radarr: "http://127.0.0.1:{{ homelab_ports.radarr }}"
+  sonarr: "http://127.0.0.1:{{ homelab_ports.sonarr }}"
+  prowlarr: "http://127.0.0.1:{{ homelab_ports.prowlarr }}"
+  jellyfin: "http://127.0.0.1:{{ homelab_ports.jellyfin }}"
+  seerr: "http://127.0.0.1:{{ homelab_ports.seerr }}"
+  bazarr: "http://127.0.0.1:{{ homelab_ports.bazarr }}"
+
+# API version, Compose stack, and the config file holding the API key each app generates.
+app_config_servarr:
+  radarr: { api: v3, stack: media, config: "{{ homelab_stack_dirs.media }}/appdata/radarr/config.xml" }
+  sonarr: { api: v3, stack: media, config: "{{ homelab_stack_dirs.media }}/appdata/sonarr/config.xml" }
+  prowlarr: { api: v1, stack: download, config: "{{ homelab_stack_dirs.download }}/appdata/prowlarr/config.xml" }
+
+# The apps reach each other by Docker service name and internal port.
+app_config_arrs:
+  - name: radarr
+    port: 7878
+    root_folder: /data/media/movies
+    download_dir: /data/torrents/movies
+    category: radarr
+    category_field: movieCategory
+  - name: sonarr
+    port: 8989
+    root_folder: /data/media/series
+    download_dir: /data/torrents/tv
+    category: tv-sonarr
+    category_field: tvCategory
+
+app_config_jellyfin_client: 'MediaBrowser Client="homelab-ansible", Device="ansible", DeviceId="homelab-ansible", Version="1.0"'
+app_config_jellyfin_settings:
+  - { path: "", settings: { ServerName: "{{ app_config_jellyfin_server_name }}" } }
+  - { path: /encoding, settings: "{{ app_config_jellyfin_encoding }}" }
+
+app_config_recyclarr_small_qualities:
+  [HDTV-720p, WEBDL-720p, WEBRip-720p, Bluray-720p, HDTV-1080p, WEBDL-1080p, WEBRip-1080p, Bluray-1080p]
+
+# Profiles Radarr and Sonarr create on install (HD-1080p is kept: Recyclarr fills it).
+app_config_stock_profiles: [Any, SD, HD-720p, Ultra-HD, HD - 720p/1080p]

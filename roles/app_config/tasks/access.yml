@@ -1,0 +1,80 @@
+---
+# Radarr, Sonarr and Prowlarr write their API key to config.xml on first start.
+- name: Read the Servarr config files
+  ansible.builtin.slurp:
+    src: "{{ item.value.config }}"
+  loop: "{{ app_config_servarr | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _app_config_xml
+  no_log: true
+
+- name: Remember the API keys
+  ansible.builtin.set_fact:
+    _app_config_api_keys: >-
+      {{ dict(_app_config_xml.results | map(attribute='item.key')
+              | zip(_app_config_xml.results | map(attribute='content') | map('b64decode')
+                    | map('regex_search', '<ApiKey>(\w+)</ApiKey>', '\1') | map('first'))) }}
+  no_log: true
+
+- name: Read the login settings
+  ansible.builtin.uri:
+    url: "{{ app_config_urls[item.key] }}/api/{{ item.value.api }}/config/host"
+    headers:
+      X-Api-Key: "{{ _app_config_api_keys[item.key] }}"
+  loop: "{{ app_config_servarr | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _app_config_hosts
+  check_mode: false
+
+# A fresh install has no login yet; an existing one is left as it is.
+- name: Set the shared login on a fresh install
+  servarr_resource:
+    url: "{{ app_config_urls[item.item.key] }}"
+    api_key: "{{ _app_config_api_keys[item.item.key] }}"
+    api_version: "{{ item.item.value.api }}"
+    endpoint: config/host
+    singleton: true
+    body:
+      authenticationMethod: forms
+      authenticationRequired: enabled
+      username: "{{ homelab_username }}"
+      password: "{{ homelab_password }}"
+      passwordConfirmation: "{{ homelab_password }}"
+  loop: "{{ _app_config_hosts.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item.json.authenticationMethod | lower != 'forms'
+  no_log: true
+
+- name: Read the Docker network
+  community.docker.docker_network_info:
+    name: "{{ homelab_docker_network }}"
+  register: _app_config_network
+
+# Tailscale HTTPS reaches the apps through the Docker network's gateway. Trusting it makes
+# them honour X-Forwarded-Proto, so their login redirect stays on https.
+- name: Trust Tailscale HTTPS as a proxy
+  servarr_resource:
+    url: "{{ app_config_urls[item.key] }}"
+    api_key: "{{ _app_config_api_keys[item.key] }}"
+    api_version: "{{ item.value.api }}"
+    endpoint: config/host
+    singleton: true
+    body:
+      trustedNetworks: "{{ _app_config_network.network.IPAM.Config[0].Gateway }}"
+  loop: "{{ app_config_servarr | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _app_config_trust
+
+- name: Restart the apps to apply the proxy trust
+  community.docker.docker_compose_v2:
+    project_src: "{{ homelab_stack_dirs[item.item.value.stack] }}"
+    services: ["{{ item.item.key }}"]
+    state: restarted
+    wait: true
+  loop: "{{ _app_config_trust.results | selectattr('changed') }}"
+  loop_control:
+    label: "{{ item.item.key }}"

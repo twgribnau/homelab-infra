@@ -1,0 +1,92 @@
+# Grafana alerts, sent to Telegram. The bot token and chat id come from grafana.env.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Telegram
+    receivers:
+      - uid: telegram
+        type: telegram
+        settings:
+          bottoken: $TELEGRAM_BOT_TOKEN
+          chatid: $TELEGRAM_CHAT_ID
+
+policies:
+  - orgId: 1
+    receiver: Telegram
+    group_by: [alertname]
+    repeat_interval: 12h
+
+groups:
+  - orgId: 1
+    name: Homelab
+    folder: Homelab
+    interval: 1m
+    rules:
+      - uid: disk-full
+        title: Disk almost full
+        condition: B
+        for: 5m
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: eg2fl62nqc2yoa
+            model:
+              refId: A
+              instant: true
+              expr: 100 * (1 - node_filesystem_avail_bytes{fstype="ext4"} / node_filesystem_size_bytes{fstype="ext4"})
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [90] } }]
+        annotations:
+          summary: A disk is more than 90% full.
+
+      - uid: too-hot
+        title: Server too hot
+        condition: B
+        for: 5m
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: eg2fl62nqc2yoa
+            model:
+              refId: A
+              instant: true
+              expr: max(node_hwmon_temp_celsius)
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [85] } }]
+        annotations:
+          summary: A sensor has been above 85 °C for 5 minutes.
+
+      # A container that keeps crashing (autoheal restarts unhealthy ones, so this also
+      # catches a VPN that keeps dropping).
+      - uid: container-restarting
+        title: Container keeps restarting
+        condition: B
+        for: 0s
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: eg2fl62nqc2yoa
+            model:
+              refId: A
+              instant: true
+              expr: changes(container_start_time_seconds{name!=""}[15m])
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions: [{ evaluator: { type: gt, params: [2] } }]
+        annotations:
+          summary: A container restarted more than twice in 15 minutes.

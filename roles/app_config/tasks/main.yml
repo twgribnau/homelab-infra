@@ -1,0 +1,42 @@
+---
+# Order matters on a fresh install: Jellyfin's API key goes into Radarr/Sonarr, Prowlarr
+# needs their API keys, and Seerr needs the quality profile Recyclarr fills.
+
+- name: API keys and login
+  ansible.builtin.import_tasks: access.yml
+  tags: [always]
+
+- name: The qBittorrent client
+  ansible.builtin.import_tasks: qbittorrent.yml
+  tags: [qbittorrent]
+
+# Also with --tags homepage: these read the API keys Homepage needs.
+- name: Jellyfin
+  ansible.builtin.import_tasks: jellyfin.yml
+  tags: [jellyfin, homepage]
+
+- name: Radarr and Sonarr
+  ansible.builtin.import_tasks: arrs.yml
+  tags: [arrs]
+
+- name: Prowlarr
+  ansible.builtin.import_tasks: prowlarr.yml
+  tags: [prowlarr]
+
+- name: Recyclarr
+  ansible.builtin.import_tasks: recyclarr.yml
+  tags: [recyclarr]
+
+- name: Seerr
+  ansible.builtin.import_tasks: seerr.yml
+  tags: [seerr, homepage]
+
+- name: Bazarr
+  ansible.builtin.import_tasks: bazarr.yml
+  when: homelab_bazarr | bool
+  tags: [bazarr, homepage]
+
+- name: Homepage
+  ansible.builtin.import_tasks: homepage.yml
+  when: homelab_homepage | bool
+  tags: [homepage]

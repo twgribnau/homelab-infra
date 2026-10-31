@@ -1,0 +1,25 @@
+---
+- name: Ensure the media stack folders exist
+  ansible.builtin.file:
+    path: "{{ homelab_stack_dirs.media }}/{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0755"
+  loop: ["", appdata, appdata/jellyfin, appdata/radarr, appdata/sonarr, appdata/seerr, appdata/recyclarr, appdata/bazarr]
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homelab_stack_dirs.media }}/docker-compose.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+
+- name: Start the media stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ homelab_stack_dirs.media }}"
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
+    recreate: "{{ 'always' if force_recreate | default(false) | bool else 'auto' }}"

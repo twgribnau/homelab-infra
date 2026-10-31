@@ -1,0 +1,130 @@
+---
+# Fresh install: sign in with the Jellyfin admin, enable the libraries, add Radarr and
+# Sonarr as default servers. Existing Seerr servers are left as they are.
+
+- name: Seerr | Read the setup state
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/public"
+  register: _app_config_seerr_public
+  check_mode: false
+
+- name: Seerr | First-time setup
+  ansible.builtin.include_tasks: seerr_setup.yml
+  when: not _app_config_seerr_public.json.initialized
+
+- name: Seerr | Read the config file
+  ansible.builtin.slurp:
+    src: "{{ homelab_stack_dirs.media }}/appdata/seerr/settings.json"
+  register: _app_config_seerr_settings
+  no_log: true
+
+- name: Seerr | Remember the API key
+  ansible.builtin.set_fact:
+    _app_config_seerr_key: "{{ (_app_config_seerr_settings.content | b64decode | from_json).main.apiKey }}"
+  no_log: true
+
+- name: Seerr | Read the Radarr and Sonarr servers
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/{{ item.name }}"
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _app_config_seerr_servers
+  check_mode: false
+
+- name: Seerr | Read the quality profiles of apps without a server
+  ansible.builtin.uri:
+    url: "{{ app_config_urls[item.item.name] }}/api/v3/qualityprofile"
+    headers:
+      X-Api-Key: "{{ _app_config_api_keys[item.item.name] }}"
+  loop: "{{ _app_config_seerr_servers.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.json | length == 0
+  register: _app_config_seerr_profiles
+
+- name: Seerr | Add Radarr and Sonarr as default servers
+  vars:
+    _arr: "{{ item.item.item }}"
+    _profile: "{{ item.json | selectattr('name', 'equalto', app_config_quality_profile) | first }}"
+    _server:
+      name: "{{ _arr.name | capitalize }}"
+      hostname: "{{ _arr.name }}"
+      port: "{{ _arr.port }}"
+      apiKey: "{{ _app_config_api_keys[_arr.name] }}"
+      useSsl: false
+      baseUrl: ""
+      activeProfileId: "{{ _profile.id }}"
+      activeProfileName: "{{ _profile.name }}"
+      activeDirectory: "{{ _arr.root_folder }}"
+      is4k: false
+      isDefault: true
+      externalUrl: ""
+      syncEnabled: false
+      preventSearch: false
+      tags: []
+    _extra:
+      radarr:
+        minimumAvailability: released
+      sonarr:
+        seriesType: standard
+        animeSeriesType: anime
+        activeAnimeProfileId: "{{ _profile.id }}"
+        activeAnimeProfileName: "{{ _profile.name }}"
+        activeAnimeDirectory: "{{ _arr.root_folder }}"
+        enableSeasonFolders: true
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/{{ _arr.name }}"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+    body_format: json
+    body: "{{ _server | combine(_extra[_arr.name]) }}"
+    status_code: [200, 201]
+  loop: "{{ _app_config_seerr_profiles.results | rejectattr('skipped', 'defined') }}"
+  loop_control:
+    label: "{{ item.item.item.name }}"
+  changed_when: true
+  no_log: true
+
+- name: Seerr | Finish the setup
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/initialize"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+  when: not _app_config_seerr_public.json.initialized
+  changed_when: true
+
+- name: Seerr | Read the Telegram settings
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/notifications/telegram"
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+  register: _app_config_seerr_telegram
+  check_mode: false
+  no_log: true
+  when: homelab_telegram | bool
+
+- name: Seerr | Telegram notifications
+  vars:
+    _settings:
+      enabled: true
+      types: "{{ app_config_seerr_telegram_types }}"
+      options:
+        botAPI: "{{ homelab_telegram_bot_token }}"
+        chatId: "{{ homelab_telegram_chat_id }}"
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/notifications/telegram"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+    body_format: json
+    body: "{{ _app_config_seerr_telegram.json | combine(_settings, recursive=true) }}"
+  when:
+    - homelab_telegram | bool
+    - _app_config_seerr_telegram.json | combine(_settings, recursive=true) != _app_config_seerr_telegram.json
+  changed_when: true
+  no_log: true
