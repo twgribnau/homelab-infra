@@ -1,6 +1,7 @@
-# Checks every PR before it gets merged: first ansible-lint, then (only when lint passes) the
-# playbook on a fresh Ubuntu VM, twice. The first run is a fresh install with every app wired
-# up; the second must change nothing. Renovate's image updates are tested this way too.
+# Checks every PR before it gets merged: first ansible-lint, then (only when lint passes)
+# setup.sh and the playbook on a fresh Ubuntu VM. The playbook runs twice: the first run is a
+# fresh install with every app wired up; the second must change nothing. Renovate's image
+# updates are tested this way too.
 # The real secrets aren't here, so lint uses secrets.example/ and the test dummy values.
 name: CI
 on:
@@ -37,17 +38,13 @@ jobs:
     timeout-minutes: 45
     env:
       PLAYBOOK: >-
-        .venv/bin/ansible-playbook provision.yml -e homelab_ci=true -e homelab_tailscale=false
+        .venv/bin/ansible-playbook provision.yml -e homelab_ci=true
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Ansible
-        run: |
-          python3 -m venv .venv
-          .venv/bin/pip install -q -r requirements.txt
-          .venv/bin/ansible-galaxy collection install -r collections/requirements.yml
-
-      - name: Use a test vault
+      # The way a new user starts (README): secrets filled in, then setup.sh, which installs
+      # Ansible and encrypts the vault with a new password. No Tailscale on the VM.
+      - name: Test secrets
         run: |
           mkdir secrets
           cat >secrets/vault.yml <<'VAULT'
@@ -56,7 +53,10 @@ jobs:
           vault_admin_email: test@example.com
           vault_backup_password: test
           VAULT
-          echo test >.vault_pass
+          echo 'homelab_tailscale: false' >secrets/local.yml
+
+      - name: Setup
+        run: ./setup.sh
 
       - name: Fresh install
         run: $PLAYBOOK
