@@ -1,0 +1,25 @@
+---
+# {{ ansible_managed }}
+name: books-stack
+
+networks:
+  default:
+    name: {{ homelab_docker_network }}
+    external: true
+
+services:
+  # Calibre-Web Automated: the ebook library, read in the browser or synced to a Kobo.
+  # The image has its own healthcheck.
+  calibre:
+    image: {{ books_stack_images.calibre }}
+    environment:
+      PUID: "{{ homelab_uid }}"
+      PGID: "{{ homelab_gid }}"
+      TZ: {{ homelab_tz }}
+    volumes:
+      - {{ homelab_stack_dirs.books }}/appdata/calibre:/config
+      - {{ homelab_data_dir }}/media/books:/calibre-library
+      - {{ homelab_data_dir }}/books-ingest:/cwa-book-ingest
+    ports:
+      - "{{ homelab_calibre_publish_ip }}:{{ homelab_ports.calibre }}:8083"
+    restart: unless-stopped

@@ -24,6 +24,17 @@
           type: seerr
           url: http://seerr:5055
           key: {{ _app_config_seerr_key }}
+{% if homelab_books | bool %}
+    - Calibre-Web:
+        icon: calibre-web.png
+        href: http://{{ homelab_host }}:{{ homelab_ports.calibre }}
+        siteMonitor: http://calibre:8083
+        widget:
+          type: calibreweb
+          url: http://calibre:8083
+          username: {{ homelab_username | to_json }}
+          password: {{ homelab_password | to_json }}
+{% endif %}
 
 - Downloads:
     - Radarr:

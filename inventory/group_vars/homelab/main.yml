@@ -11,6 +11,7 @@ homelab_stack_dirs:
   download: "{{ homelab_base_dir }}/download-stack"
   media: "{{ homelab_base_dir }}/media-stack"
   monitoring: "{{ homelab_base_dir }}/monitoring-stack"
+  books: "{{ homelab_base_dir }}/books-stack"
 # qBittorrent and the *arrs mount this one folder as /data, so imports are hardlinks.
 homelab_data_dir: "{{ homelab_base_dir }}/media-data"
 homelab_docker_network: homelab_network
@@ -37,6 +38,7 @@ homelab_ci: false
 homelab_bazarr: true       # subtitles
 homelab_monitoring: true   # Grafana and Prometheus
 homelab_homepage: true     # a start page with every app
+homelab_books: true        # ebooks, synced to a Kobo
 # Tailscale: the web UIs at https://<host>.<tailnet>.ts.net, from anywhere. Without it they
 # are on the LAN at http://<server>:<port>.
 homelab_tailscale: true
@@ -48,10 +50,11 @@ homelab_apps_off: >-
      + (['grafana'] if not homelab_monitoring | bool else [])
      + (['homepage'] if not homelab_homepage | bool else []) }}
 
-# With Tailscale the admin UIs are reachable through Tailscale HTTPS only; Jellyfin always
-# also on the LAN.
+# With Tailscale the admin UIs are reachable through Tailscale HTTPS only; Jellyfin also on
+# the LAN. Calibre-Web is on every network as plain http (a Kobo can't run Tailscale).
 homelab_publish_ip: "{{ '127.0.0.1' if homelab_tailscale | bool else '0.0.0.0' }}"
 homelab_jellyfin_publish_ip: 0.0.0.0
+homelab_calibre_publish_ip: 0.0.0.0
 # The name in the apps' links: the Tailscale name, else the server's LAN address.
 homelab_host: "{{ tailscale_host if homelab_tailscale | bool else ansible_facts.default_ipv4.address }}"
 
@@ -67,6 +70,7 @@ homelab_ports:
   grafana: 3000
   prometheus: 9090
   homepage: 3001
+  calibre: 8083
   cleanuparr: 11011
 
 # Peer port qBittorrent listens on inside the VPN. A port forwarded by the VPN provider

@@ -60,6 +60,9 @@
       tags: download
     - role: media_stack
       tags: media
+    - role: books_stack
+      tags: books
+      when: homelab_books | bool
     - role: monitoring_stack
       tags: monitoring
       when: homelab_monitoring | bool or homelab_homepage | bool
