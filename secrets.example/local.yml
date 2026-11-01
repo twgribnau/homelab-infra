@@ -4,6 +4,7 @@
 homelab_bazarr: true
 homelab_monitoring: true
 homelab_homepage: true
+homelab_books: true
 homelab_tailscale: true
 # For example the subtitle languages:
 # app_config_bazarr_profile: { name: Dutch and English, languages: [nl, en] }

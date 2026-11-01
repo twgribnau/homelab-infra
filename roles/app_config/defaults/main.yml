@@ -76,6 +76,10 @@ app_config_github_token: "{{ vault_github_token | default('') }}"
 # Prowlarr itself are kept. Example: secrets.example/indexers.yml
 app_config_prowlarr_indexers: []
 
+# Calibre-Web users besides the shared login, from the vault (secrets.example/vault.yml).
+# Created when missing; users you add in Calibre-Web itself are left alone.
+app_config_calibre_users: "{{ vault_calibre_users | default([]) }}"
+
 app_config_jellyfin_server_name: Homelab
 app_config_jellyfin_language: en
 app_config_jellyfin_country: NL

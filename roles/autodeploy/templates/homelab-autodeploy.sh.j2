@@ -8,6 +8,9 @@ cd {{ autodeploy_dir }} || exit 1
 export GIT_SSH_COMMAND="ssh -i {{ autodeploy_key }} -o IdentitiesOnly=yes"
 stacks=()
 for dir in {{ homelab_stack_dirs.values() | join(' ') }}; do [ -d "$dir" ] && stacks+=("$dir"); done  # optional ones may be off
+# What the backup holds: the app data, and the ebook library, which holds Calibre-Web's database.
+backup_dirs=("${stacks[@]}")
+[ -d {{ homelab_data_dir }}/media/books ] && backup_dirs+=({{ homelab_data_dir }}/media/books)
 web={{ autodeploy_web_url }}
 
 # Messages are Telegram HTML: text that isn't markup goes through html first.
@@ -56,7 +59,7 @@ if ! git diff --quiet HEAD FETCH_HEAD -- 'roles/*_stack/defaults/main.yml'; then
   backup=true
   restic cat config >/dev/null 2>&1 || restic init
   compose stop
-  restic backup --tag pre-deploy --exclude "*/prometheus/data" "${stacks[@]}"
+  restic backup --tag pre-deploy --exclude "*/prometheus/data" "${backup_dirs[@]}"
   status=$?
   compose start
   if [ "$status" -ne 0 ]; then
@@ -96,7 +99,7 @@ if $backup; then
   compose stop
   restore=$(sudo mktemp -d)
   restic restore latest --tag pre-deploy --target "$restore" &&
-    for dir in "${stacks[@]}"; do
+    for dir in "${backup_dirs[@]}"; do
       sudo rsync -a --delete --exclude prometheus/data "$restore$dir/" "$dir/"
     done
   sudo rm -rf "$restore"

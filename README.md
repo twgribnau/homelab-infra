@@ -4,9 +4,10 @@
 
 Ansible for a single Ubuntu home server: request a movie or series, it downloads and shows up
 in Jellyfin. Docker, a download stack (qBittorrent, optionally behind a WireGuard VPN, Prowlarr),
-a media stack (Jellyfin, Radarr, Sonarr, Seerr, Recyclarr, optionally Bazarr) and optionally
-monitoring (Prometheus, Grafana, Homepage). The playbook also connects the apps to each other and
-publishes their web UIs over Tailscale HTTPS, or on the LAN.
+a media stack (Jellyfin, Radarr, Sonarr, Seerr, Recyclarr, optionally Bazarr), optionally
+monitoring (Prometheus, Grafana, Homepage) and optionally ebooks with Kobo sync (Calibre-Web
+Automated). The playbook also connects the apps to each other and publishes their web UIs over
+Tailscale HTTPS, or on the LAN.
 
 Runs on an empty server and on an existing one: app data is kept and only settings that
 differ from this repo are changed. One username and password is used for every service.
@@ -41,6 +42,7 @@ Both can be run again. Afterwards the apps are at:
 | Seerr (request movies and series) | `https://<server>.<tailnet>.ts.net` | `http://<server-ip>:5055` |
 | Jellyfin (watch) | `https://<server>.<tailnet>.ts.net:8920`, and `http://<server-ip>:8096` at home | `http://<server-ip>:8096` |
 | Homepage (every app on one page) | `:3001` | `:3001` |
+| Calibre-Web (ebooks) | `http://<server>.<tailnet>.ts.net:8083`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
 | Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Grafana `:3000` | | |
 
 Log in with the username and password from your `vault.yml`.
@@ -79,6 +81,7 @@ Choose in `secrets/local.yml`, then run the playbook again.
 | No subtitles | `homelab_bazarr: false` |
 | No graphs | `homelab_monitoring: false` (Grafana, Prometheus) |
 | No start page | `homelab_homepage: false` |
+| No ebooks | `homelab_books: false` |
 | Other subtitle languages | `app_config_bazarr_profile: { name: German and English, languages: [de, en] }` |
 | Indexers | `secrets/indexers.yml`, or add them in Prowlarr (those are kept) |
 | More settings | Any setting in `inventory/group_vars/homelab/main.yml` or `roles/*/defaults/main.yml` |
@@ -99,12 +102,17 @@ More subtitles: an [opensubtitles.com](https://www.opensubtitles.com) account
 ansible-playbook provision.yml
 ```
 
-- Run part of it with `--tags docker|download|media|monitoring|apps|tailscale`, or one app with
-  `--tags qbittorrent|jellyfin|arrs|prowlarr|recyclarr|seerr|bazarr|homepage`.
+- Run part of it with `--tags docker|download|media|books|monitoring|apps|tailscale`, or one app with
+  `--tags qbittorrent|jellyfin|arrs|prowlarr|recyclarr|seerr|bazarr|calibre|homepage`.
 - Preview with `--check --diff` (once Docker is installed).
 - `./reset.sh` wipes the server back to Ubuntu + Tailscale (`--keep-media` keeps the library).
 - Family members only need a Jellyfin user: make one in Jellyfin (Dashboard, Users) and log in
   with it on the TV.
+- Ebooks: put them in `~/srv/media-data/books-ingest`; Calibre-Web imports them into the library.
+  For a Kobo: open Calibre-Web at `http://<server-ip>:8083`, Profile, Kobo Sync Token, and copy
+  the `api_endpoint` line into `.kobo/Kobo/Kobo eReader.conf` on the Kobo (USB), under
+  `[OneStoreServices]`. The Kobo syncs on your home wifi. Each reader can get their own user
+  with their own token: `vault_calibre_users` in the vault, or Admin, Add new user.
 
 ## Extras
 
@@ -116,8 +124,9 @@ All optional; without them nothing of it is installed. None of the above needs G
 - **Automatic deploys** (`vault_homelab_repo`, the SSH address of your fork on GitHub): the server
   checks `main` every 10 minutes and runs the playbook when it changed. Add
   `~/.ssh/homelab_deploy.pub` (made by the first run) as a deploy key on your fork. Before new
-  images it backs up the app data with [restic](https://restic.net) to `/backup/restic`; when the
-  run fails, it puts that backup and the previous commit back. Log: `journalctl -u homelab-autodeploy`.
+  images it backs up the app data and the ebook library with [restic](https://restic.net) to
+  `/backup/restic`; when the run fails, it puts that backup and the previous commit back. Log:
+  `journalctl -u homelab-autodeploy`.
   With Telegram too: a bot for `/deploy`, `/status` and `/log`.
 - **GitHub card on Homepage** (`vault_github_token`, with automatic deploys): a read-only
   fine-grained token (Actions, Contents, Pull requests) for your fork.
@@ -134,10 +143,10 @@ All optional; without them nothing of it is installed. None of the above needs G
 | `roles/*/vars/main.yml` | Fixed values of one role |
 | `roles/docker` | Docker Engine and Compose |
 | `roles/homelab_common` | Shared Docker network and the `/data` folders |
-| `roles/download_stack`, `media_stack`, `monitoring_stack` | One Docker Compose project each |
+| `roles/download_stack`, `media_stack`, `books_stack`, `monitoring_stack` | One Docker Compose project each |
 | `roles/app_config` | Configures and connects the apps through their APIs, one task file per app |
 | `roles/tailscale` | Keeps Tailscale updated, publishes the web UIs with `tailscale serve` |
-| `library/` | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs |
+| `library/` | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs and Calibre-Web's database |
 | `filter_plugins/` | Password hash for qBittorrent's first-start config, Bazarr's settings form |
 | `roles/autodeploy` | Automatic deploys (Extras) |
 | `.github/`, `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
@@ -153,6 +162,7 @@ All optional; without them nothing of it is installed. None of the above needs G
 | Jellyfin | Admin account, libraries, hardware transcoding, API key for Radarr/Sonarr |
 | Seerr | Jellyfin login, Radarr/Sonarr as default servers |
 | Bazarr | Radarr/Sonarr connection, Dutch and English subtitles for everything (`app_config_bazarr_profile`), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
+| Calibre-Web | Optional (`homelab_books`): your login instead of the default admin, Kobo sync with the Kobo store passed through, more users and their Kobo tokens (`vault_calibre_users`) |
 | Grafana | Optional (`homelab_monitoring`): Prometheus datasource and one Homelab dashboard (server and containers) as home page |
 | Homepage | Optional (`homelab_homepage`): every app with a link and a live widget (queues, streams, downloads), server load |
 

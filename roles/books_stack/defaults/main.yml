@@ -1,0 +1,3 @@
+---
+books_stack_images:
+  calibre: docker.io/crocodilestick/calibre-web-automated:v4.0.8
