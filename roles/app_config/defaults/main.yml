@@ -58,6 +58,9 @@ app_config_telegram_events:
     - onApplicationUpdate
 # Seerr: new requests and requests it could not send to Radarr/Sonarr (2 + 16 + 128).
 app_config_seerr_telegram_types: 146
+# Optional: Seerr's defaults for discovering and where something streams, e.g.
+# { originalLanguage: "nl|en", streamingRegion: NL, discoverRegion: NL } (config.example/settings.yml).
+app_config_seerr_discover: {}
 
 # Bazarr's language profile, the default for every movie and series. Subtitles are searched
 # for each language (ISO 639-1 codes). Changing the languages later is done in Bazarr itself.
