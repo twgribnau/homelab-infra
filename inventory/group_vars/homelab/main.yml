@@ -48,10 +48,11 @@ homelab_vpn: "{{ (playbook_dir ~ '/secrets/wg0.conf') is file }}"
 homelab_apps_off: >-
   {{ (['bazarr'] if not homelab_bazarr | bool else [])
      + (['grafana'] if not homelab_monitoring | bool else [])
-     + (['homepage'] if not homelab_homepage | bool else []) }}
+     + (['homepage'] if not homelab_homepage | bool else [])
+     + (['calibre'] if not homelab_books | bool else []) }}
 
-# With Tailscale the admin UIs are reachable through Tailscale HTTPS only; Jellyfin also on
-# the LAN. Calibre-Web is on every network as plain http (a Kobo can't run Tailscale).
+# With Tailscale the admin UIs are reachable through Tailscale HTTPS only; Jellyfin and
+# Calibre-Web also on the LAN, for the TV and the Kobo (it can't run Tailscale).
 homelab_publish_ip: "{{ '127.0.0.1' if homelab_tailscale | bool else '0.0.0.0' }}"
 homelab_jellyfin_publish_ip: 0.0.0.0
 homelab_calibre_publish_ip: 0.0.0.0

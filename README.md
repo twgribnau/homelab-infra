@@ -49,7 +49,7 @@ Both can be run again. Afterwards the apps are at:
 | Seerr (request movies and series) | `https://<server>.<tailnet>.ts.net` | `http://<server-ip>:5055` |
 | Jellyfin (watch) | `https://<server>.<tailnet>.ts.net:8920`, and `http://<server-ip>:8096` at home | `http://<server-ip>:8096` |
 | Homepage (every app on one page) | `:3001` | `:3001` |
-| Calibre-Web (ebooks) | `http://<server>.<tailnet>.ts.net:8083`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
+| Calibre-Web (ebooks) | `https://<server>.<tailnet>.ts.net:8443`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
 | Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Cleanuparr `:11011`, Grafana `:3000` | | |
 
 Log in with the username and password from your `vault.yml`.
