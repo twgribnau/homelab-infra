@@ -3,11 +3,11 @@
 [![CI](https://github.com/twgribnau/homelab-infra/actions/workflows/ci.yml/badge.svg)](https://github.com/twgribnau/homelab-infra/actions/workflows/ci.yml)
 
 Ansible for a single Ubuntu home server: request a movie or series, it downloads and shows up
-in Jellyfin. Docker, a download stack (qBittorrent, optionally behind a WireGuard VPN, Prowlarr),
-a media stack (Jellyfin, Radarr, Sonarr, Seerr, Recyclarr, optionally Bazarr), optionally
-monitoring (Prometheus, Grafana, Homepage) and optionally ebooks with Kobo sync (Calibre-Web
-Automated). The playbook also connects the apps to each other and publishes their web UIs over
-Tailscale HTTPS, or on the LAN.
+in Jellyfin. Docker, a download stack (qBittorrent, optionally behind a WireGuard VPN, Prowlarr,
+Cleanuparr), a media stack (Jellyfin, Radarr, Sonarr, Seerr, Recyclarr, optionally Bazarr),
+optionally monitoring (Prometheus, Grafana, Homepage) and optionally ebooks with Kobo sync
+(Calibre-Web Automated). The playbook also connects the apps to each other and publishes their web
+UIs over Tailscale HTTPS, or on the LAN.
 
 Runs on an empty server and on an existing one: app data is kept and only settings that
 differ from this repo are changed. One username and password is used for every service.
@@ -43,7 +43,7 @@ Both can be run again. Afterwards the apps are at:
 | Jellyfin (watch) | `https://<server>.<tailnet>.ts.net:8920`, and `http://<server-ip>:8096` at home | `http://<server-ip>:8096` |
 | Homepage (every app on one page) | `:3001` | `:3001` |
 | Calibre-Web (ebooks) | `http://<server>.<tailnet>.ts.net:8083`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
-| Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Grafana `:3000` | | |
+| Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Cleanuparr `:11011`, Grafana `:3000` | | |
 
 Log in with the username and password from your `vault.yml`.
 
@@ -87,8 +87,8 @@ Choose in `secrets/local.yml`, then run the playbook again.
 | More settings | Any setting in `inventory/group_vars/homelab/main.yml` or `roles/*/defaults/main.yml` |
 
 With Tailscale: in the [admin console](https://login.tailscale.com/admin/dns), DNS, turn on
-MagicDNS and HTTPS Certificates. The core apps (qBittorrent, Prowlarr, Radarr, Sonarr, Jellyfin,
-Seerr) are always installed: they work together.
+MagicDNS and HTTPS Certificates. The core apps (qBittorrent, Prowlarr, Cleanuparr, Radarr, Sonarr,
+Jellyfin, Seerr) are always installed: they work together.
 
 More subtitles: an [opensubtitles.com](https://www.opensubtitles.com) account
 (`vault_opensubtitles_username`, `vault_opensubtitles_password`) and API keys for
@@ -103,7 +103,7 @@ ansible-playbook provision.yml
 ```
 
 - Run part of it with `--tags docker|download|media|books|monitoring|apps|tailscale`, or one app with
-  `--tags qbittorrent|jellyfin|arrs|prowlarr|recyclarr|seerr|bazarr|calibre|homepage`.
+  `--tags qbittorrent|jellyfin|arrs|prowlarr|cleanuparr|recyclarr|seerr|bazarr|calibre|homepage`.
 - Preview with `--check --diff` (once Docker is installed).
 - `./reset.sh` wipes the server back to Ubuntu + Tailscale (`--keep-media` keeps the library).
 - Family members only need a Jellyfin user: make one in Jellyfin (Dashboard, Users) and log in
@@ -155,9 +155,10 @@ All optional; without them nothing of it is installed. None of the above needs G
 
 | App | |
 |---|---|
-| qBittorrent | Automatic torrent management, a download category per app |
+| qBittorrent | Automatic torrent management, a download category per app, 5 downloads at once |
 | Radarr, Sonarr | Hardlinks, root folder, qBittorrent client, Jellyfin library refresh |
 | Prowlarr | Your indexers (`secrets/indexers.yml`), FlareSolverr, sync to Radarr/Sonarr |
+| Cleanuparr | Your login, qBittorrent, Radarr/Sonarr; removes downloads stuck on metadata (15 min) or stalled (30 min), then Radarr/Sonarr search again |
 | Recyclarr | TRaSH Guides 1080p quality profiles (stock profiles removed), custom formats and naming |
 | Jellyfin | Admin account, libraries, hardware transcoding, API key for Radarr/Sonarr |
 | Seerr | Jellyfin login, Radarr/Sonarr as default servers |

@@ -1,0 +1,153 @@
+---
+# Fresh install: your login. Then qBittorrent, Radarr and Sonarr (when missing; existing ones
+# are left as they are) and the queue cleaner: downloads stuck on metadata or stalled are
+# removed, and Radarr/Sonarr blocklist them and search again. Seeding and failed downloads
+# are left to qBittorrent and Radarr/Sonarr (app_config_qbittorrent_preferences, arrs.yml).
+
+- name: Cleanuparr | Read the setup state
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/auth/status"
+  register: _app_config_cleanuparr_status
+  check_mode: false
+
+# 409: the account exists already, from a setup that was interrupted.
+- name: Cleanuparr | Create your login
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/auth/setup/account"
+    method: POST
+    body_format: json
+    body:
+      username: "{{ homelab_username }}"
+      password: "{{ homelab_password }}"
+    status_code:
+      - 201
+      - 409
+  when: not _app_config_cleanuparr_status.json.setupCompleted
+  changed_when: true
+  no_log: true
+
+- name: Cleanuparr | Finish the setup
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/auth/setup/complete"
+    method: POST
+  when: not _app_config_cleanuparr_status.json.setupCompleted
+  changed_when: true
+
+- name: Cleanuparr | Log in
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/auth/login"
+    method: POST
+    body_format: json
+    body:
+      username: "{{ homelab_username }}"
+      password: "{{ homelab_password }}"
+  register: _app_config_cleanuparr_login
+  check_mode: false
+  no_log: true
+
+- name: Cleanuparr | Read the settings
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/{{ item }}"
+    headers:
+      Authorization: "Bearer {{ _app_config_cleanuparr_login.json.tokens.accessToken }}"
+  loop:
+    - configuration/download_client
+    - configuration/radarr
+    - configuration/sonarr
+    - configuration/queue_cleaner
+    - queue-rules/stall
+  register: _app_config_cleanuparr_read
+  check_mode: false
+  no_log: true
+
+- name: Cleanuparr | Remember the settings
+  ansible.builtin.set_fact:
+    _app_config_cleanuparr: >-
+      {{ dict(_app_config_cleanuparr_read.results | map(attribute='item')
+              | zip(_app_config_cleanuparr_read.results | map(attribute='json'))) }}
+  no_log: true
+
+# qBittorrent runs in gluetun's network namespace, so it is reached as "gluetun".
+- name: Cleanuparr | qBittorrent
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/configuration/download_client"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ _app_config_cleanuparr_login.json.tokens.accessToken }}"
+    body_format: json
+    body:
+      enabled: true
+      name: qBittorrent
+      typeName: qBittorrent
+      host: "http://gluetun:{{ homelab_ports.qbittorrent }}"
+      username: "{{ homelab_username }}"
+      password: "{{ homelab_password }}"
+    status_code:
+      - 200
+      - 201
+  when: _app_config_cleanuparr['configuration/download_client'].clients | length == 0
+  changed_when: true
+  no_log: true
+
+- name: Cleanuparr | Radarr and Sonarr
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/configuration/{{ item.name }}/instances"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ _app_config_cleanuparr_login.json.tokens.accessToken }}"
+    body_format: json
+    body:
+      enabled: true
+      name: "{{ item.name | capitalize }}"
+      url: "http://{{ item.name }}:{{ item.port }}"
+      apiKey: "{{ _app_config_api_keys[item.name] }}"
+      version: "{{ item.major_version }}"
+    status_code:
+      - 200
+      - 201
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: _app_config_cleanuparr['configuration/' ~ item.name].instances | length == 0
+  changed_when: true
+  no_log: true
+
+- name: Cleanuparr | Queue cleaner
+  vars:
+    _settings:
+      enabled: true
+      downloadingMetadataMaxStrikes: "{{ app_config_cleanuparr_metadata_strikes }}"
+    _current: "{{ _app_config_cleanuparr['configuration/queue_cleaner'] }}"
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/configuration/queue_cleaner"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ _app_config_cleanuparr_login.json.tokens.accessToken }}"
+    body_format: json
+    body: "{{ _current | combine(_settings) }}"
+  when: _current | combine(_settings) != _current
+  changed_when: true
+
+- name: Cleanuparr | Remove stalled downloads
+  vars:
+    _rule:
+      name: Stalled
+      enabled: true
+      maxStrikes: "{{ app_config_cleanuparr_stalled_strikes }}"
+      privacyType: Public
+      minCompletionPercentage: 0
+      maxCompletionPercentage: 100
+      resetStrikesOnProgress: true
+    _current: "{{ _app_config_cleanuparr['queue-rules/stall'] | selectattr('name', 'equalto', _rule.name) | first | default({}) }}"
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.cleanuparr }}/api/queue-rules/stall{{ '/' ~ _current.id if _current else '' }}"
+    method: "{{ 'PUT' if _current else 'POST' }}"
+    headers:
+      Authorization: "Bearer {{ _app_config_cleanuparr_login.json.tokens.accessToken }}"
+    body_format: json
+    body: "{{ _current | combine(_rule) }}"
+    status_code:
+      - 200
+      - 201
+  when: _current | combine(_rule) != _current
+  changed_when: true

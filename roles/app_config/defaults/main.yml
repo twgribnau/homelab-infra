@@ -11,7 +11,11 @@ app_config_qbittorrent_preferences:
   save_path_changed_tmm_enabled: true
   category_changed_tmm_enabled: true
   upnp: false
-  # Torrents nobody is downloading from don't take one of the 3 upload slots.
+  # How many torrents run at once; the rest wait in the queue. Fewer at once share the speed
+  # among fewer, so each one is done sooner. Torrents without activity don't take a slot.
+  max_active_downloads: 5
+  max_active_uploads: 5
+  max_active_torrents: 10
   dont_count_slow_torrents: true
   # Stop seeding at ratio 2 or after 7 days, whichever comes first. Radarr and Sonarr then
   # remove their stopped torrents; the library copies stay (hardlinks).
@@ -20,6 +24,13 @@ app_config_qbittorrent_preferences:
   max_seeding_time_enabled: true
   max_seeding_time: 10080   # minutes
   max_ratio_act: 0          # 0 = stop the torrent
+
+# Cleanuparr checks the downloads every 5 minutes and gives a strike to each one that is stuck.
+# At this many strikes it removes it; Radarr and Sonarr blocklist the release and search again.
+# Metadata comes in seconds when anyone shares the torrent, so 3 (15 minutes) is enough.
+app_config_cleanuparr_metadata_strikes: 3
+# Stalled: no download progress. A strike is dropped again as soon as it progresses.
+app_config_cleanuparr_stalled_strikes: 6
 
 # What goes to Telegram (when it is set up): imports, imports that need you, errors and
 # app updates. Sonarr sends one message per import, so a season pack is one message.
@@ -109,8 +120,9 @@ app_config_recyclarr_upgrades: true
 # While x265 is allowed: 720p/1080p minimum size in MB per minute (TRaSH's would reject it).
 app_config_recyclarr_x265_min_size: 4
 # File size in MB per minute of video; releases above the max are skipped.
-# 15 is ~375 MB per 25-minute episode or ~1.8 GB per 2-hour movie; 40 is ~1 GB or ~4.8 GB.
+# 15 is ~375 MB per 25-minute episode or ~1.8 GB per 2-hour movie; 50 is ~1.25 GB or ~6 GB,
+# room for 1080p WEB-DLs from streaming services (often 45 MB per minute).
 app_config_recyclarr_preferred_size: 15
 app_config_recyclarr_max_size:
-  720p: 25
-  1080p: 40
+  720p: 30
+  1080p: 50

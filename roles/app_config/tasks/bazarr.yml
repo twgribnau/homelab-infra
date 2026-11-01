@@ -49,7 +49,7 @@
               + (['opensubtitlescom'] if _opensubtitles else [])
               + (['subdl'] if app_config_subdl_api_key else [])
               + (['subsource'] if app_config_subsource_api_key else [])) | unique
-              | difference(app_config_bazarr_providers_dead) }}
+              | reject('in', app_config_bazarr_providers_dead) | list }}
       # base_url "" as Bazarr stores it: it strips the trailing slash of "/".
       radarr: { ip: radarr, port: 7878, base_url: "", ssl: false, apikey: "{{ _app_config_api_keys.radarr }}" }
       sonarr: { ip: sonarr, port: 8989, base_url: "", ssl: false, apikey: "{{ _app_config_api_keys.sonarr }}" }

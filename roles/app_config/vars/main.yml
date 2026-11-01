@@ -10,6 +10,7 @@ app_config_urls:
   jellyfin: "http://127.0.0.1:{{ homelab_ports.jellyfin }}"
   seerr: "http://127.0.0.1:{{ homelab_ports.seerr }}"
   bazarr: "http://127.0.0.1:{{ homelab_ports.bazarr }}"
+  cleanuparr: "http://127.0.0.1:{{ homelab_ports.cleanuparr }}"
 
 # API version, Compose stack, and the config file holding the API key each app generates.
 app_config_servarr:
@@ -25,12 +26,14 @@ app_config_arrs:
     download_dir: /data/torrents/movies
     category: radarr
     category_field: movieCategory
+    major_version: 6   # for Cleanuparr
   - name: sonarr
     port: 8989
     root_folder: /data/media/series
     download_dir: /data/torrents/tv
     category: tv-sonarr
     category_field: tvCategory
+    major_version: 4
 
 app_config_jellyfin_client: 'MediaBrowser Client="homelab-ansible", Device="ansible", DeviceId="homelab-ansible", Version="1.0"'
 app_config_jellyfin_settings:
