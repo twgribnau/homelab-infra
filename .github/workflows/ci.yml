@@ -2,7 +2,7 @@
 # not for a PR that only changes Markdown) setup.sh and the playbook on a fresh Ubuntu VM. The
 # playbook runs twice: the first run is a fresh install with every app wired up; the second
 # must change nothing. Renovate's image updates are tested this way too.
-# The real secrets aren't here, so lint uses secrets.example/ and the test dummy values.
+# The real configuration isn't here, so lint uses config.example/ and the test dummy values.
 name: CI
 on:
   pull_request:
@@ -37,9 +37,9 @@ jobs:
           else
             echo code=true >>"$GITHUB_OUTPUT"
           fi
-      - name: Use the example secrets
+      - name: Use the example configuration
         run: |
-          cp -r secrets.example secrets
+          cp -r config.example config
           echo ci >.vault_pass
       - uses: ansible/ansible-lint@v26.9.0
 
@@ -56,18 +56,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The way a new user starts (README): secrets filled in, then setup.sh, which installs
+      # The way a new user starts (README): configuration filled in, then setup.sh, which installs
       # Ansible and encrypts the vault with a new password. No Tailscale on the VM.
-      - name: Test secrets
+      - name: Test configuration
         run: |
-          mkdir secrets
-          cat >secrets/vault.yml <<'VAULT'
+          mkdir config
+          cat >config/vault.yml <<'VAULT'
           vault_homelab_user: runner
           vault_homelab_password: Test-password-123
           vault_admin_email: test@example.com
           vault_backup_password: test
           VAULT
-          echo 'homelab_tailscale: false' >secrets/local.yml
+          echo 'homelab_tailscale: false' >config/settings.yml
+          cp config.example/maintainerr.yml config/   # the example rules are tested too
 
       - name: Setup
         run: ./setup.sh

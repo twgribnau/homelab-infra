@@ -1,7 +1,8 @@
 #!/bin/bash
 # {{ ansible_managed }}
-# Runs the playbook when main on GitHub has new commits. Before new images it backs up the app
-# data; when the run fails it restores that backup and deploys the previous commit again.
+# Runs the playbook when main on GitHub has new commits, or your config repo (config/) has.
+# Before new images it backs up the app data; when the run fails it restores that backup and
+# deploys the previous commit again. A failing config change is left for you to fix.
 # Started by homelab-autodeploy.timer; the full output is in: journalctl -u homelab-autodeploy
 set -uo pipefail
 cd {{ autodeploy_dir }} || exit 1
@@ -37,15 +38,24 @@ deploy() {
 git fetch --quiet --tags origin main || exit 1
 new=$(git rev-parse FETCH_HEAD)
 old=$(git rev-parse HEAD)
-[ "$new" = "$old" ] && exit 0
+# Your config repo, fetched with your own SSH key: a deploy key fits one repo only.
+config_old=$(git -C config rev-parse HEAD 2>/dev/null)
+config_new=$config_old
+if [ -n "$config_old" ] && env -u GIT_SSH_COMMAND git -C config fetch --quiet; then
+  config_new=$(git -C config rev-parse '@{upstream}' 2>/dev/null || echo "$config_old")
+fi
+[ "$new" = "$old" ] && [ "$config_new" = "$config_old" ] && exit 0
 # A commit that failed waits for the next one (a fix, or a revert of the PR).
-[ "$new" = "$(cat .failed-commit 2>/dev/null)" ] && exit 0
+[ "$new $config_new" = "$(cat .failed-commit 2>/dev/null)" ] && exit 0
 # A run you started by hand goes first; the next check picks this up.
 pgrep -f '^[^ ]*python[^ ]* [^ ]*/ansible-playbook( |$)' >/dev/null && exit 0
 
 # One line per commit: a link to it on GitHub, then its title.
 changes=$(git log --format='%H %h %s' HEAD..FETCH_HEAD | while read -r full short title; do
   echo "• <a href=\"$web/commit/$full\">$short</a> $(html "$title")"
+done
+git -C config log --format='%h %s' "$config_old..$config_new" 2>/dev/null | while read -r short title; do
+  echo "• config $short $(html "$title")"
 done)
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
@@ -63,7 +73,7 @@ if ! git diff --quiet HEAD FETCH_HEAD -- 'roles/*_stack/defaults/main.yml'; then
   status=$?
   compose start
   if [ "$status" -ne 0 ]; then
-    echo "$new" >.failed-commit
+    echo "$new $config_new" >.failed-commit
     printf '%s\n%s\n%s\n' "$(date '+%F %R')" "$new" "The backup failed" >.last-failure
     notify "❌ Homelab update skipped: the backup failed. journalctl -u homelab-autodeploy"
     exit 1
@@ -72,6 +82,12 @@ if ! git diff --quiet HEAD FETCH_HEAD -- 'roles/*_stack/defaults/main.yml'; then
 fi
 
 git reset --quiet --hard "$new"
+# Fast-forward only: config/ is your own folder, so changes you haven't committed stay.
+if [ "$config_new" != "$config_old" ] && ! git -C config merge --quiet --ff-only "$config_new"; then
+  echo "$new $config_new" >.failed-commit
+  notify "❌ Homelab update stopped: your config repo has changes that aren't committed. Commit or undo them in ~/homelab-config."
+  exit 1
+fi
 if deploy; then
   rm -f .failed-commit
   notify "✅ Homelab updated to $(version HEAD)
@@ -90,7 +106,7 @@ error=$(awk '/^(fatal|failed):/ { f = 1; next }
              END { gsub(/^\047|\047$/, "", m); print m }' "$log")
 [ -n "$error" ] || error=$(tail -n 3 "$log")
 [ "$error" = "${error:0:300}" ] || error="${error:0:300}…"
-echo "$new" >.failed-commit
+echo "$new $config_new" >.failed-commit
 # For the Telegram bot's /log: when, which commit, the task, its error.
 printf '%s\n%s\n%s\n%s\n' "$(date '+%F %R')" "$new" "${task:-?}" "$error" >.last-failure
 
@@ -103,6 +119,13 @@ if $backup; then
       sudo rsync -a --delete --exclude prometheus/data "$restore$dir/" "$dir/"
     done
   sudo rm -rf "$restore"
+fi
+if [ "$new" = "$old" ]; then
+  notify "❌ Homelab update failed: $(html "${task:-see the log}")
+$(html "$error")
+${changes}
+Your config change didn't work: fix it in your config repo. journalctl -u homelab-autodeploy"
+  exit 1
 fi
 git reset --quiet --hard "$old"
 if deploy; then result="rolled back to the version before"; else result="the rollback failed too"; fi

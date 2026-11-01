@@ -1,5 +1,5 @@
 ---
-# Prowlarr's indexers, the sites it searches. Copy this to secrets/indexers.yml and fill in your own.
+# Prowlarr's indexers, the sites it searches. Copy this to config/indexers.yml and fill in your own.
 # `name`: your name for it. `definition`: Prowlarr's id for the site (Prowlarr → Indexers → Add,
 # the name in the URL of its definition). Optional per site: `base_url` (a working mirror),
 # `flaresolverr: true` (sites behind Cloudflare), `state: absent` (remove it again).

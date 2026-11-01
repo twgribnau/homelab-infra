@@ -1,0 +1,14 @@
+---
+# Your own choices, overriding inventory/group_vars/homelab/main.yml and roles/*/defaults.
+# Copy this to config/settings.yml. Not encrypted: there is nothing secret in it.
+homelab_bazarr: true
+homelab_monitoring: true
+homelab_homepage: true
+homelab_books: true
+homelab_tailscale: true
+# The time zone of the apps (default Etc/UTC), e.g.:
+# homelab_tz: Europe/Amsterdam
+# Subtitle languages (default English), e.g.:
+# app_config_bazarr_profile: { name: Dutch and English, languages: [nl, en] }
+# The country Jellyfin uses for ratings and release dates (default US), e.g.:
+# app_config_jellyfin_country: NL

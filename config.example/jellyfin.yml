@@ -1,0 +1,16 @@
+---
+# Jellyfin, beyond the libraries and transcoding the repo sets up. Copy this to config/jellyfin.yml.
+# Each part is optional: leave it out and Jellyfin keeps what you set in it yourself.
+# The users themselves (name and password) are in vault.yml: vault_jellyfin_users.
+
+# One home screen for every user, row by row; the rest stays empty. Rows: resume (Continue
+# Watching), nextup, latestmedia (Recently Added), librarybuttons (My Media, small),
+# smalllibrarytiles, resumeaudio, resumebook, livetv.
+# app_config_jellyfin_home: [resume, nextup, latestmedia, librarybuttons]
+
+# Your login and the users from the vault as tiles on the login screen, like Netflix profiles.
+# app_config_jellyfin_profile_tiles: true
+
+# A profile picture per user, a JPEG or PNG in this folder. Set when the user has none yet.
+# app_config_jellyfin_images:
+#   admin: images/admin.jpg

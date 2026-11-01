@@ -1,0 +1,105 @@
+---
+# Maintainerr's rule groups. Copy this to config/maintainerr.yml. Each group is made when it is
+# missing; changes you make in Maintainerr itself are kept. Without this file Maintainerr removes
+# nothing until you make rules in its UI.
+#   name: also the collection's name in Jellyfin
+#   library: a Jellyfin library
+#   type: movie, show, season or episode
+#   leaving_days: how long it stays in that collection before it is removed (default 7)
+#   rules: what Maintainerr shows under Rules > Export; paste your own there
+# Removal goes through Radarr (movies) or Sonarr (series): a movie is removed, a season or
+# episode is unmonitored and its files deleted, so neither comes back.
+#
+# These two remove what has been watched: by whoever requested it in Seerr, or by anyone when
+# nobody requested it; favourites never. Movies 14 days after the last view; series per
+# complete season, 3 days after its last episode. Then 7 days in "Leaving soon".
+app_config_maintainerr_rule_groups:
+  - name: Leaving soon (movies)
+    library: Movies
+    type: movie
+    leaving_days: 7
+    rules:
+      mediaType: MOVIES
+      rules:
+        - "0":
+            - firstValue: Seerr.addUser
+              action: CONTAINS
+              lastValue: Jellyfin.seenBy
+        - "1":
+            - operator: OR
+              firstValue: Seerr.isRequested
+              action: EQUALS
+              customValue:
+                type: boolean
+                value: "false"
+            - operator: AND
+              firstValue: Jellyfin.seenBy
+              action: COUNT_BIGGER
+              customValue:
+                type: number
+                value: 0
+        - "2":
+            - operator: AND
+              firstValue: Jellyfin.lastViewedAt
+              action: BEFORE
+              customValue:
+                type: custom_days
+                value: "14"
+        - "3":
+            - operator: AND
+              firstValue: Jellyfin.favoritedBy
+              action: COUNT_SMALLER
+              customValue:
+                type: number
+                value: 1
+  - name: Leaving soon (series)
+    library: Series
+    type: season
+    leaving_days: 7
+    rules:
+      mediaType: SEASONS
+      rules:
+        - "0":
+            - firstValue: Seerr.addUser
+              action: CONTAINS
+              lastValue: Jellyfin.sw_allEpisodesSeenBy
+        - "1":
+            - operator: OR
+              firstValue: Seerr.isRequested
+              action: EQUALS
+              customValue:
+                type: boolean
+                value: "false"
+            - operator: AND
+              firstValue: Jellyfin.sw_allEpisodesSeenBy
+              action: COUNT_BIGGER
+              customValue:
+                type: number
+                value: 0
+        - "2":
+            - operator: AND
+              firstValue: Jellyfin.sw_lastWatched
+              action: BEFORE
+              customValue:
+                type: custom_days
+                value: "3"
+        - "3":
+            - operator: AND
+              firstValue: Jellyfin.sw_favoritedBy_including_parent
+              action: COUNT_SMALLER
+              customValue:
+                type: number
+                value: 1
+        - "4":
+            - operator: AND
+              firstValue: Sonarr.seasonFinale
+              action: EQUALS
+              customValue:
+                type: boolean
+                value: "true"
+            - operator: OR
+              firstValue: Sonarr.seriesFinale
+              action: EQUALS
+              customValue:
+                type: boolean
+                value: "true"

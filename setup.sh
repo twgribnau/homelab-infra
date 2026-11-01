@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# First-time setup on the server: installs Ansible (and Tailscale, unless secrets/local.yml
-# turns it off), links ~/homelab-secrets as secrets/ and encrypts vault.yml and wg0.conf if
-# they aren't yet. Asks nothing: fill in your secrets first (README). Safe to run again.
+# First-time setup on the server: installs Ansible (and Tailscale, unless config/settings.yml
+# turns it off), links ~/homelab-config as config/ and encrypts vault.yml and wg0.conf if
+# they aren't yet. Asks nothing: fill in your configuration first (README). Safe to run again.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-secrets_dir="$HOME/homelab-secrets"
+config_dir="$HOME/homelab-config"
 fail() { echo "❌ $1" >&2; exit 1; }
 encrypted() { head -c 14 "$1" | grep -q '^\$ANSIBLE_VAULT'; }
 
-[ -e secrets ] || [ -d "$secrets_dir" ] ||
-  fail "No $secrets_dir. Copy secrets.example/ there and fill in vault.yml (README, Setup)."
-[ -e secrets ] || ln -s "$secrets_dir" secrets
-[ -f secrets/vault.yml ] || fail "No secrets/vault.yml. Copy secrets.example/vault.yml and fill it in."
+# The link's old name, secrets/, becomes config/.
+[ -L secrets ] && [ ! -e config ] && mv secrets config
+[ -e config ] || [ -d "$config_dir" ] ||
+  fail "No $config_dir. Copy config.example/ there and fill in vault.yml (README, Setup)."
+[ -e config ] || ln -s "$config_dir" config
+[ -f config/vault.yml ] || fail "No config/vault.yml. Copy config.example/vault.yml and fill it in."
 
 echo "== Ansible"
 sudo apt-get install -y -qq git python3-venv curl openssl >/dev/null
@@ -22,18 +24,18 @@ sudo apt-get install -y -qq git python3-venv curl openssl >/dev/null
 
 echo "== Encrypting your secrets"
 if [ ! -f .vault_pass ]; then
-  encrypted secrets/vault.yml && fail "secrets/vault.yml is encrypted: put its password in .vault_pass."
+  encrypted config/vault.yml && fail "config/vault.yml is encrypted: put its password in .vault_pass."
   (umask 077; openssl rand -base64 32 >.vault_pass)
   echo "New vault password in .vault_pass. Save it in your password manager: $(cat .vault_pass)"
 fi
-# local.yml and indexers.yml hold nothing secret and stay readable.
-for file in secrets/vault.yml secrets/wg0.conf; do
+# The other files hold nothing secret and stay readable.
+for file in config/vault.yml config/wg0.conf; do
   if [ -f "$file" ] && ! encrypted "$file"; then
     .venv/bin/ansible-vault encrypt "$file"
   fi
 done
 
-if ! grep -qs 'homelab_tailscale: *false' secrets/*.yml && ! command -v tailscale >/dev/null; then
+if ! grep -qs 'homelab_tailscale: *false' config/*.yml && ! command -v tailscale >/dev/null; then
   echo "== Tailscale"
   curl -fsSL https://tailscale.com/install.sh | sh
   sudo tailscale up

@@ -57,15 +57,20 @@
     mode: "0600"
   no_log: true
 
-# The secrets stay in your private repo; the deploys use the same files.
-- name: Give the deploys the secrets
+# Your configuration stays in your private repo; the deploys use the same files.
+- name: Give the deploys your configuration
   ansible.builtin.file:
-    src: "{{ (playbook_dir ~ '/secrets') | realpath }}"
-    dest: "{{ autodeploy_dir }}/secrets"
+    src: "{{ homelab_config_dir | realpath }}"
+    dest: "{{ autodeploy_dir }}/config"
     state: link
     owner: "{{ homelab_uid }}"
     group: "{{ homelab_gid }}"
     follow: false
+
+- name: Remove the link under the old name
+  ansible.builtin.file:
+    path: "{{ autodeploy_dir }}/secrets"
+    state: absent
 
 - name: Write the backup and Telegram settings for the deploys
   ansible.builtin.copy:

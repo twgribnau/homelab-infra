@@ -2,9 +2,12 @@
 # Settings shared by several roles. Role-specific settings live in roles/*/defaults.
 
 homelab_user: "{{ vault_homelab_user }}"   # the server's login user
+# Your own configuration: config/, a link to your private repo (README). secrets/ is its old
+# name, still read until the next release.
+homelab_config_dir: "{{ playbook_dir ~ ('/config' if (playbook_dir ~ '/config') is directory else '/secrets') }}"
 homelab_uid: 1000
 homelab_gid: 1000
-homelab_tz: Europe/Amsterdam
+homelab_tz: Etc/UTC   # the apps' time zone, e.g. Europe/Amsterdam in config/settings.yml
 
 homelab_base_dir: "/home/{{ homelab_user }}/srv"
 homelab_stack_dirs:
@@ -34,7 +37,7 @@ homelab_repo: "{{ vault_homelab_repo | default('') }}"
 homelab_ci: false
 
 # Optional parts. The search, download and watch apps (qBittorrent, Prowlarr, Radarr, Sonarr,
-# Jellyfin, Seerr) are always there. Change these in secrets/local.yml.
+# Jellyfin, Seerr) are always there. Change these in config/settings.yml.
 homelab_bazarr: true       # subtitles
 homelab_monitoring: true   # Grafana and Prometheus
 homelab_homepage: true     # a start page with every app
@@ -42,8 +45,8 @@ homelab_books: true        # ebooks, synced to a Kobo
 # Tailscale: the web UIs at https://<host>.<tailnet>.ts.net, from anywhere. Without it they
 # are on the LAN at http://<server>:<port>.
 homelab_tailscale: true
-# qBittorrent behind a WireGuard VPN, when there is a secrets/wg0.conf.
-homelab_vpn: "{{ (playbook_dir ~ '/secrets/wg0.conf') is file }}"
+# qBittorrent behind a WireGuard VPN, when there is a config/wg0.conf.
+homelab_vpn: "{{ (homelab_config_dir ~ '/wg0.conf') is file }}"
 # The optional web UIs that are off, left out of Tailscale and Homepage.
 homelab_apps_off: >-
   {{ (['bazarr'] if not homelab_bazarr | bool else [])

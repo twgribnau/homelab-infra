@@ -1,7 +1,7 @@
 ---
-# Connects Maintainerr to Jellyfin, Radarr, Sonarr, Seerr and Telegram, and adds the rule groups
-# (vars/main.yml, templates/maintainerr-*.yml.j2). Each is added when missing; what you change in
-# Maintainerr itself is kept. Maintainerr has no login.
+# Connects Maintainerr to Jellyfin, Radarr, Sonarr, Seerr and Telegram, and adds your rule groups
+# (config/maintainerr.yml). Each is added when missing; what you change in Maintainerr itself is
+# kept. Maintainerr has no login.
 
 - name: Maintainerr | Read the connections
   ansible.builtin.uri:
@@ -131,16 +131,14 @@
     method: POST
     body_format: json
     body:
-      yaml: "{{ lookup('ansible.builtin.template', 'maintainerr-' ~ item.type ~ '.yml.j2') }}"
+      yaml: "{{ item.rules | to_nice_yaml }}"
       mediaType: "{{ item.type }}"
     status_code: 201
   loop: "{{ app_config_maintainerr_rule_groups }}"
   loop_control:
     label: "{{ item.name }}"
   register: _app_config_maintainerr_rules
-  when:
-    - app_config_maintainerr_rules | bool
-    - item.name not in _app_config_maintainerr.rules | map(attribute='name')
+  when: item.name not in _app_config_maintainerr.rules | map(attribute='name')
   failed_when: _app_config_maintainerr_rules.json.code | default(0) != 1
   check_mode: false
 
@@ -148,18 +146,21 @@
   vars:
     _group: "{{ item.item }}"
     _library: "{{ _app_config_maintainerr['media-server/libraries'] | selectattr('title', 'equalto', _group.library) | first }}"
-    _server: "{{ _app_config_maintainerr['settings/' ~ _group.arr] | first }}"
+    # DELETE (0): Radarr removes the movie; Sonarr unmonitors the season or episode and deletes
+    # its files, so neither comes back.
+    _arr: "{{ 'radarr' if _group.type == 'movie' else 'sonarr' }}"
+    _server: "{{ _app_config_maintainerr['settings/' ~ _arr] | first }}"
     _body:
       name: "{{ _group.name }}"
-      description: Watched, by the rules in homelab-infra (roles/app_config/templates/maintainerr-*.yml.j2)
+      description: From config/maintainerr.yml (homelab-infra)
       libraryId: "{{ _library.id }}"
       dataType: "{{ _group.type }}"
       isActive: true
       useRules: true
-      arrAction: "{{ _group.action }}"
+      arrAction: 0
       listExclusions: true
       collection:
-        deleteAfterDays: "{{ app_config_maintainerr_leaving_days }}"
+        deleteAfterDays: "{{ _group.leaving_days | default(7) }}"
         visibleOnHome: true
         visibleOnRecommended: true
         keepLogsForMonths: 6
@@ -169,7 +170,7 @@
     url: "{{ app_config_urls.maintainerr }}/api/rules"
     method: POST
     body_format: json
-    body: "{{ _body | combine({_group.arr ~ 'SettingsId': _server.id}) }}"
+    body: "{{ _body | combine({_arr ~ 'SettingsId': _server.id}) }}"
     status_code: 201
   loop: "{{ _app_config_maintainerr_rules.results | rejectattr('skipped', 'defined') }}"
   loop_control:

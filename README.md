@@ -29,18 +29,18 @@ On a server with Ubuntu 26.04 and a user with `sudo`:
 ```bash
 sudo apt install -y git
 git clone https://github.com/twgribnau/homelab-infra.git && cd homelab-infra
-mkdir ~/homelab-secrets && cp secrets.example/* ~/homelab-secrets/
-nano ~/homelab-secrets/vault.yml   # your username, a password for the apps, email (see Your secrets)
-nano ~/homelab-secrets/local.yml   # which optional apps you want
+mkdir ~/homelab-config && cp config.example/* ~/homelab-config/
+nano ~/homelab-config/vault.yml      # your username, a password for the apps, email (see Your configuration)
+nano ~/homelab-config/settings.yml   # which optional apps you want
 ./setup.sh
 .venv/bin/ansible-playbook provision.yml
 ```
 
-Optional before `./setup.sh`: the sites Prowlarr searches in `~/homelab-secrets/indexers.yml`,
-and your VPN's WireGuard config as `~/homelab-secrets/wg0.conf` (see [Your secrets](#your-secrets)).
+Optional before `./setup.sh`: the sites Prowlarr searches in `~/homelab-config/indexers.yml`,
+and your VPN's WireGuard config as `~/homelab-config/wg0.conf` (see [Your configuration](#your-configuration)).
 
 `setup.sh` asks nothing. It installs Ansible and Tailscale (unless `homelab_tailscale: false`),
-links `~/homelab-secrets` as `secrets/` and encrypts your secrets with a new vault password,
+links `~/homelab-config` as `config/` and encrypts your secrets with a new vault password,
 which it shows once (save it in your password manager). The playbook then installs everything.
 Both can be run again. Afterwards the apps are at:
 
@@ -49,48 +49,57 @@ Both can be run again. Afterwards the apps are at:
 | Seerr (request movies and series) | `https://<server>.<tailnet>.ts.net` | `http://<server-ip>:5055` |
 | Jellyfin (watch) | `https://<server>.<tailnet>.ts.net:8920`, and `http://<server-ip>:8096` at home | `http://<server-ip>:8096` |
 | Homepage (every app on one page) | `:3001` | `:3001` |
-| Calibre-Web (ebooks) | `http://<server>.<tailnet>.ts.net:8083`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
+| Calibre-Web (ebooks) | `https://<server>.<tailnet>.ts.net:8443`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
 | Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Cleanuparr `:11011`, Maintainerr `:6246`, Grafana `:3000` | | |
 
 Log in with the username and password from your `vault.yml`.
 
-## Your secrets
+## Your configuration
 
-Everything personal lives in `secrets/`, a link to `~/homelab-secrets`, never in this repo.
-Start from [`secrets.example/`](secrets.example); each key is explained there.
+This repo is the same for everyone. Everything that is yours lives in `config/`, a link to
+`~/homelab-config` (keep it as a private git repo), never in this repo. Start from
+[`config.example/`](config.example); each file explains its keys. Every `.yml` in it is read,
+so split it up as you like. Leave a file out and that part isn't configured.
 
-- **`vault.yml`**: passwords and API keys. Required: `vault_homelab_user` (your Ubuntu user),
-  `vault_homelab_password` (the login for every app), `vault_admin_email`, `vault_backup_password`.
+- **`vault.yml`** (encrypted): passwords and API keys, and the extra users of Jellyfin and
+  Calibre-Web. Required: `vault_homelab_user` (your Ubuntu user), `vault_homelab_password` (the
+  login for every app), `vault_admin_email`, `vault_backup_password`.
+- **`settings.yml`**: your choices: which optional apps, time zone, subtitle languages (see Options).
 - **`indexers.yml`**: the sites Prowlarr searches. Per site a `name` and its `definition`, the
   file name (without `.yml`) in [Prowlarr's indexer list](https://github.com/Prowlarr/Indexers/tree/master/definitions):
   `- { name: My indexer, definition: <id> }`. Indexers added in Prowlarr itself are kept.
-- **`local.yml`**: your choices (see Options).
-- **`wg0.conf`**: optional, the WireGuard file from your VPN provider, as downloaded.
+- **`maintainerr.yml`**: rules for removing what has been watched. The example removes movies 14
+  days and complete seasons 3 days after the last view; paste your own from Maintainerr's
+  Rules > Export.
+- **`jellyfin.yml`**: one home screen for every user, profile tiles on the login screen,
+  profile pictures (files next to it, e.g. `images/`).
+- **`wg0.conf`** (encrypted): optional, the WireGuard file from your VPN provider, as downloaded.
 
 `setup.sh` encrypts `vault.yml` and `wg0.conf`; change those later with
-`ansible-vault edit secrets/<file>`. The others are plain text.
+`ansible-vault edit config/<file>`. The others are plain text.
 
 The vault password is in `.vault_pass` (not in git). Keep it in your password manager: with it,
 the encrypted files are useless to anyone else, and without it they are useless to you.
 
-Keep a copy of `~/homelab-secrets` somewhere private: a USB stick, or a private git repo. On a
-new server, put it back in `~/homelab-secrets` and the vault password in `.vault_pass` before
-`./setup.sh`. More `.yml` files of your own in `secrets/` are read too.
+With automatic deploys (Extras), a commit to your config repo is deployed too: the server pulls
+it every 10 minutes, with your own SSH key. On a new server, clone it to `~/homelab-config` and
+put the vault password in `.vault_pass` before `./setup.sh`. Coming from `~/homelab-secrets`
+and `secrets/` (before v2): rename the folder, and `setup.sh` renames the link.
 
 ## Options
 
-Choose in `secrets/local.yml`, then run the playbook again.
+Choose in `config/settings.yml`, then run the playbook again.
 
 | Want | Do |
 |---|---|
-| A VPN for downloads | Put your provider's WireGuard config in `secrets/wg0.conf` and run `./setup.sh` (it encrypts it). Without it qBittorrent downloads from your own IP address. A port forwarded by the provider: `vault_torrent_port` |
+| A VPN for downloads | Put your provider's WireGuard config in `config/wg0.conf` and run `./setup.sh` (it encrypts it). Without it qBittorrent downloads from your own IP address. A port forwarded by the provider: `vault_torrent_port` |
 | No Tailscale | `homelab_tailscale: false`: every web UI on the LAN at `http://<server-ip>:<port>`, nothing from outside |
 | No subtitles | `homelab_bazarr: false` |
 | No graphs | `homelab_monitoring: false` (Grafana, Prometheus) |
 | No start page | `homelab_homepage: false` |
 | No ebooks | `homelab_books: false` |
 | Other subtitle languages | `app_config_bazarr_profile: { name: German and English, languages: [de, en] }` |
-| Indexers | `secrets/indexers.yml`, or add them in Prowlarr (those are kept) |
+| Indexers | `config/indexers.yml`, or add them in Prowlarr (those are kept) |
 | More settings | Any setting in `inventory/group_vars/homelab/main.yml` or `roles/*/defaults/main.yml` |
 
 With Tailscale: in the [admin console](https://login.tailscale.com/admin/dns), DNS, turn on
@@ -144,8 +153,8 @@ All optional; without them nothing of it is installed. None of the above needs G
 |---|---|
 | `provision.yml` | The playbook: the roles in order |
 | `inventory/group_vars/homelab/main.yml` | Settings shared by several roles |
-| `setup.sh` | First-time setup: Ansible, Tailscale, links and encrypts your secrets |
-| `secrets/` | Your secrets and choices (not in git, see above); examples in `secrets.example/` |
+| `setup.sh` | First-time setup: Ansible, Tailscale, links your configuration and encrypts its secrets |
+| `config/` | Your configuration (not in this repo, see above); examples in `config.example/` |
 | `roles/*/defaults/main.yml` | Settings of one role you may change |
 | `roles/*/vars/main.yml` | Fixed values of one role |
 | `roles/docker` | Docker Engine and Compose |
@@ -164,13 +173,13 @@ All optional; without them nothing of it is installed. None of the above needs G
 |---|---|
 | qBittorrent | Automatic torrent management, a download category per app, 5 downloads at once |
 | Radarr, Sonarr | Hardlinks, root folder, qBittorrent client, Jellyfin library refresh |
-| Prowlarr | Your indexers (`secrets/indexers.yml`), FlareSolverr, sync to Radarr/Sonarr |
+| Prowlarr | Your indexers (`config/indexers.yml`), FlareSolverr, sync to Radarr/Sonarr |
 | Cleanuparr | Your login, qBittorrent, Radarr/Sonarr; removes downloads stuck on metadata (15 min) or stalled (30 min), then Radarr/Sonarr search again |
 | Recyclarr | TRaSH Guides 1080p quality profiles (stock profiles removed), custom formats and naming |
-| Jellyfin | Admin account, more users (`vault_jellyfin_users`), optionally as profile tiles on the login screen (`app_config_jellyfin_profile_tiles`), libraries, hardware transcoding, API key for Radarr/Sonarr, optionally one home screen for every user (`app_config_jellyfin_home`) |
+| Jellyfin | Admin account, more users (`vault_jellyfin_users`), optionally profile tiles, pictures and one home screen (`config/jellyfin.yml`), libraries, hardware transcoding, API key for Radarr/Sonarr |
 | Seerr | Jellyfin login, Radarr/Sonarr as default servers |
-| Maintainerr | Jellyfin, Radarr, Sonarr, Seerr and Telegram. Optionally (`app_config_maintainerr_rules: true`) two rule groups: what has been watched (by whoever requested it in Seerr, else by anyone) goes to a "Leaving soon" collection in Jellyfin 14 days (movies) or 3 days (series, per complete season) after the last view, and is removed 7 days later. Favourites never (`app_config_maintainerr_days`). It has no login |
-| Bazarr | Radarr/Sonarr connection, Dutch and English subtitles for everything (`app_config_bazarr_profile`), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
+| Maintainerr | Jellyfin, Radarr, Sonarr, Seerr and Telegram, and your rule groups from `config/maintainerr.yml` (the example removes what has been watched, via a "Leaving soon" collection in Jellyfin). It has no login |
+| Bazarr | Radarr/Sonarr connection, subtitles for everything in your languages (`app_config_bazarr_profile`, English by default), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
 | Calibre-Web | Optional (`homelab_books`): your login instead of the default admin, Kobo sync with the Kobo store passed through, more users and their Kobo tokens (`vault_calibre_users`) |
 | Grafana | Optional (`homelab_monitoring`): Prometheus datasource and one Homelab dashboard (server and containers) as home page |
 | Homepage | Optional (`homelab_homepage`): every app with a link and a live widget (queues, streams, downloads), server load |
