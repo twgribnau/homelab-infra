@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Telegram bot for the homelab: /deploy, /status and /log, answered in one chat only.
+"""Telegram bot for the homelab: /deploy, /status, /log, /hold and /main, answered in one chat only.
 
 It long-polls Telegram, so nothing has to reach the server from outside. Messages from other
 chats are ignored, and commands older than a minute (sent while the bot was down) are
@@ -19,6 +19,7 @@ import urllib.request
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID = int(os.environ["TELEGRAM_CHAT_ID"])
 REPO = os.environ["HOMELAB_REPO_DIR"]
+STATE = os.environ["HOMELAB_STATE_DIR"]  # the hold on automatic deploys, shared with homelab-autodeploy
 WEB = os.environ["HOMELAB_REPO_URL"]
 DISKS = {"System": "/", "Media": os.environ["HOMELAB_DATA_DIR"]}
 DISK_WARN = 90  # percent used
@@ -49,6 +50,30 @@ def deploy():
     return "Checking GitHub now. When main has changed, the deploy reports here; otherwise nothing follows."
 
 
+def hold():
+    with open(f"{STATE}/hold", "w") as file:
+        file.write("held from Telegram\n")
+    return "✋ Auto-deploys on hold: the server keeps what it runs now. /main puts main back."
+
+
+def main_again():
+    if run("systemctl", "is-active", "homelab-autodeploy.service") == "activating":
+        return "A deploy is already running; try /main again when it is done."
+    open(f"{STATE}/deploy-main", "w").close()  # homelab-autodeploy lifts the hold and deploys main
+    subprocess.run(["systemctl", "start", "--no-block", "homelab-autodeploy.service"], check=True, timeout=30)
+    return "▶️ Back to main: deploying it now, the deploy reports here. Auto-deploys follow main again."
+
+
+def held():
+    try:
+        with open(f"{STATE}/hold") as file:
+            what = file.read().strip()
+        since = time.strftime("%-d %b %H:%M", time.localtime(os.path.getmtime(f"{STATE}/hold")))
+    except FileNotFoundError:
+        return []
+    return ["", f"✋ Auto-deploys on hold since {since}: {html.escape(what)}. /main puts main back."]
+
+
 def status():
     lines = []
     for line in sorted(run("docker", "ps", "-a", "--format", "{{.Names}}\t{{.Status}}").splitlines()):
@@ -67,7 +92,8 @@ def status():
     # v1.1.0, or v1.1.0 + 3 commits since that release
     version = re.sub(r"-(\d+)-g[0-9a-f]+$", r" + \1 commits", run("git", "-C", REPO, "describe", "--tags", "--always"))
     failed = " (a newer commit failed, see /log)" if os.path.exists(f"{REPO}/.failed-commit") else ""
-    return "\n".join(lines + ["", f"Deployed: {html.escape(version)}, {commit_link(commit)} {html.escape(title)}{failed}"])
+    return "\n".join(lines + ["", f"Deployed: {html.escape(version)}, {commit_link(commit)} {html.escape(title)}{failed}"]
+                     + held())
 
 
 def log():
@@ -85,10 +111,12 @@ COMMANDS = {
     "deploy": ("Check GitHub now and deploy main if it changed", deploy),
     "status": ("Containers, disk space and the deployed commit", status),
     "log": ("Why the last deploy failed", log),
+    "hold": ("Keep what runs now: no automatic deploys until /main", hold),
+    "main": ("Back to main: deploy it now and follow it again", main_again),
 }
 HELP = "\n".join(f"/{name} – {description}" for name, (description, _) in COMMANDS.items())
 # Buttons under the message field; a tap sends the label, which stands for the command.
-BUTTONS = {"📊 Status": "status", "🔄 Deploy": "deploy", "📜 Log": "log"}
+BUTTONS = {"📊 Status": "status", "🔄 Deploy": "deploy", "📜 Log": "log", "✋ Hold": "hold", "▶️ Main": "main"}
 KEYBOARD = {"keyboard": [[{"text": label} for label in BUTTONS]], "resize_keyboard": True, "is_persistent": True}
 
 

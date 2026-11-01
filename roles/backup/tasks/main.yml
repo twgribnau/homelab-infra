@@ -1,0 +1,66 @@
+---
+# A nightly backup to the cloud, through rclone: Google Drive, OneDrive, Backblaze B2, S3 and more.
+# Where: homelab_backup_remote in config/settings.yml. The remote and its login:
+# vault_rclone_config in config/vault.yml (README, Offsite backup).
+
+- name: Check the rclone settings in the vault
+  ansible.builtin.assert:
+    that: vault_rclone_config | default('') | length > 0
+    fail_msg: homelab_backup_remote is set, but vault_rclone_config isn't (README, Offsite backup).
+    quiet: true
+
+- name: Install rclone, restic and rsync
+  ansible.builtin.apt:
+    name:
+      - rclone
+      - restic
+      - rsync
+
+- name: Create the backup settings folder
+  ansible.builtin.file:
+    path: /etc/homelab-backup
+    state: directory
+    mode: "0700"
+
+- name: Write the rclone remote
+  ansible.builtin.copy:
+    content: "{{ vault_rclone_config }}"
+    dest: /etc/homelab-backup/rclone.conf
+    mode: "0600"
+    force: false   # rclone renews the Google login in this file itself
+  no_log: true
+
+- name: Write the backup settings
+  ansible.builtin.copy:
+    # Quoted: systemd strips the quotes, and a shell can read the file too (README, restoring).
+    content: |
+      RESTIC_REPOSITORY={{ ('rclone:' ~ homelab_backup_remote) | quote }}
+      RESTIC_PASSWORD={{ vault_backup_password | quote }}
+      RCLONE_CONFIG=/etc/homelab-backup/rclone.conf
+      TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token | quote }}
+      TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id | quote }}
+    dest: /etc/homelab-backup/env
+    mode: "0600"
+  no_log: true
+
+- name: Install the backup script
+  ansible.builtin.template:
+    src: homelab-backup.sh.j2
+    dest: /usr/local/bin/homelab-backup
+    mode: "0755"
+
+- name: Install the systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - homelab-backup.service
+    - homelab-backup.timer
+
+- name: Start the timer
+  ansible.builtin.systemd_service:
+    name: homelab-backup.timer
+    enabled: true
+    state: started
+    daemon_reload: true
