@@ -1,7 +1,7 @@
-# Checks every PR before it gets merged: first ansible-lint, then (only when lint passes)
-# setup.sh and the playbook on a fresh Ubuntu VM. The playbook runs twice: the first run is a
-# fresh install with every app wired up; the second must change nothing. Renovate's image
-# updates are tested this way too.
+# Checks every PR before it gets merged: first ansible-lint, then (only when lint passes, and
+# not for a PR that only changes Markdown) setup.sh and the playbook on a fresh Ubuntu VM. The
+# playbook runs twice: the first run is a fresh install with every app wired up; the second
+# must change nothing. Renovate's image updates are tested this way too.
 # The real secrets aren't here, so lint uses secrets.example/ and the test dummy values.
 name: CI
 on:
@@ -21,8 +21,22 @@ defaults:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # A PR that only changes Markdown skips the test job; a skipped job counts as passed.
+      - name: Check what changed
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ] &&
+            ! git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qv '\.md$'; then
+            echo code=false >>"$GITHUB_OUTPUT"
+          else
+            echo code=true >>"$GITHUB_OUTPUT"
+          fi
       - name: Use the example secrets
         run: |
           cp -r secrets.example secrets
@@ -33,7 +47,7 @@ jobs:
   # wg0.conf), GPU (homelab_ci) or Tailscale. Not again after the merge: the PR already ran it.
   test:
     needs: lint
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && needs.lint.outputs.code == 'true'
     runs-on: ubuntu-26.04  # same as the server
     timeout-minutes: 45
     env:
