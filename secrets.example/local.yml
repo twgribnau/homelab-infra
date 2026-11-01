@@ -10,3 +10,7 @@ homelab_tailscale: true
 # app_config_bazarr_profile: { name: Dutch and English, languages: [nl, en] }
 # Maintainerr's rules: remove what has been watched (roles/app_config/defaults/main.yml)
 # app_config_maintainerr_rules: true
+# One home screen for every Jellyfin user (roles/app_config/defaults/main.yml has the rows):
+# app_config_jellyfin_home: [resume, nextup, latestmedia, librarybuttons]
+# Your Jellyfin users as tiles on the login screen, like Netflix profiles:
+# app_config_jellyfin_profile_tiles: true

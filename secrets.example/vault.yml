@@ -27,5 +27,9 @@ vault_github_token: ""
 # reinstall; for the shared login give only its name and kobo_token.
 # vault_calibre_users:
 #   - { name: reader, email: reader@example.com, password: "", kobo_token: "" }
+# Optional: more Jellyfin users, created when missing. Each gets every library and their own
+# watch history.
+# vault_jellyfin_users:
+#   - { name: viewer, password: "" }
 # Optional: a peer port forwarded by your VPN provider, e.g. 24257
 # vault_torrent_port: 24257

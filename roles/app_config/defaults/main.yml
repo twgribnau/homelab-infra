@@ -109,6 +109,18 @@ app_config_jellyfin_country: NL
 app_config_jellyfin_libraries:
   - { name: Movies, type: movies, path: /data/media/movies }
   - { name: Series, type: tvshows, path: /data/media/series }
+# Optional: one home screen for every user, row by row; the rest stays empty. Rows: resume
+# (Continue Watching), nextup, latestmedia (Recently Added), librarybuttons (My Media, small),
+# smalllibrarytiles, resumeaudio, resumebook, livetv. The web app and the TV apps built on it show
+# it; changes made in Jellyfin itself are set back on the next run. Example: secrets.example/local.yml
+app_config_jellyfin_home: []
+# Optional: your login and those users as tiles on Jellyfin's login screen, to pick a profile
+# like on Netflix (with a password). Without it they stay hidden, Jellyfin's default.
+app_config_jellyfin_profile_tiles: false
+# More users besides your login, from the vault (secrets.example/vault.yml): created when
+# missing, not admins, with every library and their own watch history. Users you add in
+# Jellyfin itself are left alone.
+app_config_jellyfin_users: "{{ vault_jellyfin_users | default([]) }}"
 # VA-API on the Intel iGPU. HardwareAccelerationType: none = software transcoding.
 app_config_jellyfin_encoding:
   HardwareAccelerationType: vaapi

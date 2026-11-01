@@ -116,8 +116,8 @@ ansible-playbook provision.yml
 - Bookmarks for every web UI, at the address that works for you: `~/srv/bookmarks.html` on the
   server. Copy it with `scp <server>:srv/bookmarks.html .` and import it in your browser
   (Bookmarks, Import, HTML file).
-- Family members only need a Jellyfin user: make one in Jellyfin (Dashboard, Users) and log in
-  with it on the TV.
+- Family members only need a Jellyfin user, with their own watch history: `vault_jellyfin_users`
+  in the vault, or make one in Jellyfin (Dashboard, Users). They log in with it on the TV.
 - Ebooks: put them in `~/srv/media-data/books-ingest`; Calibre-Web imports them into the library.
   For a Kobo: open Calibre-Web at `http://<server-ip>:8083`, Profile, Kobo Sync Token, and copy
   the `api_endpoint` line into `.kobo/Kobo/Kobo eReader.conf` on the Kobo (USB), under
@@ -170,7 +170,7 @@ All optional; without them nothing of it is installed. None of the above needs G
 | Prowlarr | Your indexers (`secrets/indexers.yml`), FlareSolverr, sync to Radarr/Sonarr |
 | Cleanuparr | Your login, qBittorrent, Radarr/Sonarr; removes downloads stuck on metadata (15 min) or stalled (30 min), then Radarr/Sonarr search again |
 | Recyclarr | TRaSH Guides 1080p quality profiles (stock profiles removed), custom formats and naming |
-| Jellyfin | Admin account, libraries, hardware transcoding, API key for Radarr/Sonarr |
+| Jellyfin | Admin account, more users (`vault_jellyfin_users`), optionally as profile tiles on the login screen (`app_config_jellyfin_profile_tiles`), libraries, hardware transcoding, API key for Radarr/Sonarr, optionally one home screen for every user (`app_config_jellyfin_home`) |
 | Seerr | Jellyfin login, Radarr/Sonarr as default servers |
 | Maintainerr | Jellyfin, Radarr, Sonarr, Seerr and Telegram. Optionally (`app_config_maintainerr_rules: true`) two rule groups: what has been watched (by whoever requested it in Seerr, else by anyone) goes to a "Leaving soon" collection in Jellyfin 14 days (movies) or 3 days (series, per complete season) after the last view, and is removed 7 days later. Favourites never (`app_config_maintainerr_days`). It has no login |
 | Bazarr | Radarr/Sonarr connection, Dutch and English subtitles for everything (`app_config_bazarr_profile`), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
