@@ -63,6 +63,19 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Removes what has been watched, by the rules you make in its UI. It has no login, so it is
+  # published like the other admin UIs. The image has its own healthcheck.
+  maintainerr:
+    image: {{ media_stack_images.maintainerr }}
+    user: "{{ homelab_uid }}:{{ homelab_gid }}"
+    environment:
+      TZ: {{ homelab_tz }}
+    volumes:
+      - {{ homelab_stack_dirs.media }}/appdata/maintainerr:/opt/data
+    ports:
+      - "{{ homelab_publish_ip }}:{{ homelab_ports.maintainerr }}:6246"
+    restart: unless-stopped
+
   radarr:
     image: {{ media_stack_images.radarr }}
     environment: *linuxserver-env
