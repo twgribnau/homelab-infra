@@ -50,6 +50,7 @@ app_config_app_names:
   maintainerr: Maintainerr
   grafana: Grafana
   homepage: Homepage
+
 # Maintainerr's rule groups, made when missing; changes you make in its UI are kept. The name is
 # also the collection's name in Jellyfin.
 app_config_maintainerr_rule_groups:
