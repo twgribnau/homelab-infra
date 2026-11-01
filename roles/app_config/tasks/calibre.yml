@@ -1,7 +1,7 @@
 ---
 # Your login instead of the default admin on a fresh install, Kobo sync with the Kobo store
 # passed through, and your own users (app_config_calibre_users) with their Kobo tokens, so the
-# Kobos keep syncing after a reinstall. Runs as you: the database belongs to the container's user.
+# Kobos keep syncing after a reinstall.
 - name: Calibre-Web | Login, Kobo sync and users
   calibre_web:
     db: "{{ homelab_stack_dirs.books }}/appdata/calibre/app.db"
@@ -11,8 +11,6 @@
       email: "{{ homelab_admin_email }}"
     users: "{{ app_config_calibre_users }}"
   register: _app_config_calibre
-  become: true
-  become_user: "{{ homelab_user }}"
 
 # Calibre-Web reads its settings only when it starts.
 - name: Calibre-Web | Restart for the new settings

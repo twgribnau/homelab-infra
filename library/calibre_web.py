@@ -153,6 +153,12 @@ def main():
         db.rollback()
     else:
         db.commit()
+    db.close()
+    # SQLite's -wal and -shm files made by this run as root must stay writable for Calibre-Web.
+    owner = os.stat(params["db"])
+    for path in (params["db"] + "-wal", params["db"] + "-shm"):
+        if os.path.exists(path):
+            os.chown(path, owner.st_uid, owner.st_gid)
     module.exit_json(changed=bool(changes), changes=changes, restart=bool(restart))
 
 
