@@ -45,8 +45,7 @@ done
 compose start
 stopped=false
 
-# Snapshots keep the apps' own paths, so a restore puts files where they belong.
-cd "$staging" || fail "no $staging"
-restic backup --tag nightly "${backup_dirs[@]#/}" || fail "restic backup stopped with code $?"
+# In the snapshots the files are under {{ backup_staging_dir }}, e.g. {{ backup_staging_dir }}{{ homelab_data_dir }}/media/books.
+restic backup --tag nightly "${backup_dirs[@]/#/$staging}" || fail "restic backup stopped with code $?"
 restic forget --tag nightly --prune --keep-daily {{ backup_keep_daily }} --keep-weekly {{ backup_keep_weekly }} --keep-monthly {{ backup_keep_monthly }} ||
   fail "removing old backups failed"

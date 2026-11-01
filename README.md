@@ -183,8 +183,8 @@ make that folder (don't make it yourself). Other clouds: `rclone config` writes 
 Getting things out, also on another computer with restic and rclone: put the repository and the
 password in the environment (on the server: `sudo -i` and `set -a; . /etc/homelab-backup/env`),
 then `restic snapshots` lists the backups, `restic restore latest --target ~/restore` puts
-everything back as plain files (`--include '*.epub'` for only the ebooks), and `restic mount
-~/backup` lets you browse them as folders.
+everything back as plain files under `~/restore/backup/staging/` (`--include '*.epub'` for only
+the ebooks), and `restic mount ~/backup` lets you browse them as folders.
 
 ## Layout
 

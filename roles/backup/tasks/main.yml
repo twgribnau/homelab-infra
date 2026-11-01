@@ -32,12 +32,13 @@
 
 - name: Write the backup settings
   ansible.builtin.copy:
+    # Quoted: systemd strips the quotes, and a shell can read the file too (README, restoring).
     content: |
-      RESTIC_REPOSITORY=rclone:{{ homelab_backup_remote }}
-      RESTIC_PASSWORD={{ vault_backup_password }}
+      RESTIC_REPOSITORY={{ ('rclone:' ~ homelab_backup_remote) | quote }}
+      RESTIC_PASSWORD={{ vault_backup_password | quote }}
       RCLONE_CONFIG=/etc/homelab-backup/rclone.conf
-      TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token }}
-      TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id }}
+      TELEGRAM_BOT_TOKEN={{ homelab_telegram_bot_token | quote }}
+      TELEGRAM_CHAT_ID={{ homelab_telegram_chat_id | quote }}
     dest: /etc/homelab-backup/env
     mode: "0600"
   no_log: true
