@@ -56,6 +56,9 @@ app_config_maintainerr_telegram_types:
   - 32
   - 64
 
+# What Bazarr tells subtitle sites it is (subf2m needs a browser's).
+app_config_bazarr_user_agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36
+
 app_config_jellyfin_client: 'MediaBrowser Client="homelab-ansible", Device="ansible", DeviceId="homelab-ansible", Version="1.0"'
 app_config_jellyfin_settings:
   - { path: "", settings: { ServerName: "{{ app_config_jellyfin_server_name }}" } }
