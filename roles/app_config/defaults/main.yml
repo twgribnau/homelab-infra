@@ -11,11 +11,11 @@ app_config_qbittorrent_preferences:
   save_path_changed_tmm_enabled: true
   category_changed_tmm_enabled: true
   upnp: false
-  # How many torrents run at once; the rest wait in the queue. Torrents nobody is downloading
-  # from don't take an upload slot.
-  max_active_downloads: 10
-  max_active_uploads: 10
-  max_active_torrents: 20
+  # How many torrents run at once; the rest wait in the queue. Fewer at once share the speed
+  # among fewer, so each one is done sooner. Torrents without activity don't take a slot.
+  max_active_downloads: 5
+  max_active_uploads: 5
+  max_active_torrents: 10
   dont_count_slow_torrents: true
   # Stop seeding at ratio 2 or after 7 days, whichever comes first. Radarr and Sonarr then
   # remove their stopped torrents; the library copies stay (hardlinks).

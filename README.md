@@ -146,7 +146,7 @@ All optional; without them nothing of it is installed. None of the above needs G
 
 | App | |
 |---|---|
-| qBittorrent | Automatic torrent management, a download category per app, 10 downloads at once |
+| qBittorrent | Automatic torrent management, a download category per app, 5 downloads at once |
 | Radarr, Sonarr | Hardlinks, root folder, qBittorrent client, Jellyfin library refresh |
 | Prowlarr | Your indexers (`secrets/indexers.yml`), FlareSolverr, sync to Radarr/Sonarr |
 | Cleanuparr | Your login, qBittorrent, Radarr/Sonarr; removes downloads stuck on metadata (15 min) or stalled (30 min), then Radarr/Sonarr search again |
