@@ -1,0 +1,17 @@
+<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- {{ ansible_managed }}. Import it in your browser: Bookmarks, Import, HTML file. -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3>Homelab</H3>
+    <DL><p>
+{% for app in tailscale_serve | rejectattr('app', 'in', homelab_apps_off) %}
+{%   if homelab_tailscale | bool %}
+        <DT><A HREF="https://{{ homelab_host }}{{ '' if app.port == 443 else ':' ~ app.port }}">{{ app_config_app_names[app.app] | default(app.app | capitalize) }}</A>
+{%   else %}
+        <DT><A HREF="http://{{ homelab_host }}:{{ homelab_ports[app.app] }}">{{ app_config_app_names[app.app] | default(app.app | capitalize) }}</A>
+{%   endif %}
+{% endfor %}
+    </DL><p>
+</DL><p>
