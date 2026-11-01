@@ -146,7 +146,9 @@ All optional; without them nothing of it is installed. None of the above needs G
   images it backs up the app data and the ebook library with [restic](https://restic.net) to
   `/backup/restic`; when the run fails, it puts that backup and the previous commit back. Log:
   `journalctl -u homelab-autodeploy`.
-  With Telegram too: a bot for `/deploy`, `/status` and `/log`.
+  With Telegram too: a bot for `/deploy`, `/status` and `/log`. Running the playbook yourself
+  from a branch puts the automatic deploys on hold, so `main` doesn't replace what you test;
+  from `main` they follow it again. In Telegram: `/hold`, and `/main` to deploy `main` now.
 - **GitHub card on Homepage** (`vault_github_token`, with automatic deploys): a read-only
   fine-grained token (Actions, Contents, Pull requests) for your fork.
 - **Offsite backup** (`homelab_backup_remote`, see below): every night the app data and the

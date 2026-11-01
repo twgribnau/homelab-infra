@@ -106,10 +106,18 @@
     state: started
     daemon_reload: true
 
-# Telegram commands /deploy, /status and /log, answered in your chat only.
+# Telegram commands /deploy, /status, /log, /hold and /main, answered in your chat only.
 - name: Telegram bot
   when: homelab_telegram | bool
   block:
+    - name: Create the folder for the hold on automatic deploys
+      ansible.builtin.file:
+        path: "{{ homelab_state_dir }}"
+        state: directory
+        owner: "{{ homelab_uid }}"
+        group: "{{ homelab_gid }}"
+        mode: "0755"
+
     - name: Write the bot's Telegram settings
       ansible.builtin.copy:
         content: |

@@ -39,6 +39,21 @@ deploy() {
   return "$status"
 }
 
+# On hold (a run of the playbook from a branch, or /hold): leave the server as it is, with a
+# reminder once a day. /main lifts the hold and deploys main even when nothing changed.
+state={{ homelab_state_dir }}
+force=false
+if [ -f "$state/deploy-main" ]; then
+  force=true
+  rm -f "$state/deploy-main" "$state/hold"
+elif [ -f "$state/hold" ]; then
+  if [ "$(date -r "$state/hold" +%F)" != "$(date +%F)" ] && [ "$(cat "$state/hold-reminded" 2>/dev/null)" != "$(date +%F)" ]; then
+    date +%F >"$state/hold-reminded"
+    notify "✋ Auto-deploys still on hold since $(date -r "$state/hold" '+%-d %b'): $(html "$(cat "$state/hold")"). /main puts main back."
+  fi
+  exit 0
+fi
+
 git fetch --quiet --tags origin main || exit 1
 new=$(git rev-parse FETCH_HEAD)
 old=$(git rev-parse HEAD)
@@ -48,9 +63,11 @@ config_new=$config_old
 if [ -n "$config_old" ] && env -u GIT_SSH_COMMAND git -C config fetch --quiet; then
   config_new=$(git -C config rev-parse '@{upstream}' 2>/dev/null || echo "$config_old")
 fi
-[ "$new" = "$old" ] && [ "$config_new" = "$config_old" ] && exit 0
-# A commit that failed waits for the next one (a fix, or a revert of the PR).
-[ "$new $config_new" = "$(cat .failed-commit 2>/dev/null)" ] && exit 0
+if ! $force; then
+  [ "$new" = "$old" ] && [ "$config_new" = "$config_old" ] && exit 0
+  # A commit that failed waits for the next one (a fix, or a revert of the PR).
+  [ "$new $config_new" = "$(cat .failed-commit 2>/dev/null)" ] && exit 0
+fi
 # A run you started by hand goes first; the next check picks this up.
 pgrep -f '^[^ ]*python[^ ]* [^ ]*/ansible-playbook( |$)' >/dev/null && exit 0
 
@@ -63,6 +80,7 @@ git -C config log --format='%h %s' "$config_old..$config_new" 2>/dev/null | whil
 done)
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
+$force && [ -z "$changes" ] && changes="• back to main"
 notify "🔄 Homelab update started
 ${changes}"
 

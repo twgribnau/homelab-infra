@@ -50,6 +50,8 @@ homelab_tailscale: true
 homelab_backup_remote: ""
 # Held by the nightly backup and the automatic deploys, so they never run at the same time.
 homelab_lock: /run/lock/homelab.lock
+# What the deploys, the Telegram bot and the playbook share: the hold on automatic deploys.
+homelab_state_dir: /var/lib/homelab
 # qBittorrent behind a WireGuard VPN, when there is a config/wg0.conf.
 homelab_vpn: "{{ (homelab_config_dir ~ '/wg0.conf') is file }}"
 # The optional web UIs that are off, left out of Tailscale and Homepage.

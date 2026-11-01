@@ -54,6 +54,61 @@
       when: lookup('env', 'HOMELAB_AUTODEPLOY') == ''
       tags: always
 
+    # Run by hand from a branch: the automatic deploys hold, so main doesn't replace what you are
+    # testing. Run from main and they follow main again. /hold and /main do the same in Telegram.
+    - name: Hold or release the automatic deploys
+      when:
+        - lookup('env', 'HOMELAB_AUTODEPLOY') == ''
+        - homelab_repo | default('') | length > 0
+      tags: always
+      block:
+        # The git module only clones and updates; it can't tell the branch.
+        - name: Read the branch you run from
+          ansible.builtin.command: git -C {{ playbook_dir }} rev-parse --abbrev-ref HEAD  # noqa: command-instead-of-module
+          register: _homelab_branch
+          changed_when: false
+          check_mode: false
+          become: true
+          become_user: "{{ homelab_user }}"
+
+        - name: Create the folder for the hold
+          ansible.builtin.file:
+            path: "{{ homelab_state_dir }}"
+            state: directory
+            owner: "{{ homelab_uid }}"
+            group: "{{ homelab_gid }}"
+            mode: "0755"
+
+        - name: Hold the automatic deploys (a run from a branch)
+          ansible.builtin.copy:
+            content: "{{ _homelab_branch.stdout }}\n"
+            dest: "{{ homelab_state_dir }}/hold"
+            owner: "{{ homelab_uid }}"
+            group: "{{ homelab_gid }}"
+            mode: "0644"
+          register: _homelab_hold
+          when: _homelab_branch.stdout != 'main'
+
+        - name: Release the automatic deploys (a run from main)
+          ansible.builtin.file:
+            path: "{{ homelab_state_dir }}/hold"
+            state: absent
+          register: _homelab_release
+          when: _homelab_branch.stdout == 'main'
+
+        - name: Tell Telegram
+          ansible.builtin.uri:
+            url: "https://api.telegram.org/bot{{ homelab_telegram_bot_token }}/sendMessage"
+            method: POST
+            body_format: json
+            body:
+              chat_id: "{{ homelab_telegram_chat_id }}"
+              text: >-
+                {{ '✋ Auto-deploys on hold: you are running ' ~ _homelab_branch.stdout ~ '. /main puts main back.'
+                   if _homelab_hold is changed else '▶️ Auto-deploys follow main again.' }}
+          when: homelab_telegram | bool and (_homelab_hold is changed or _homelab_release is changed)
+          no_log: true
+
   roles:
     - role: tailscale
       tags: tailscale
