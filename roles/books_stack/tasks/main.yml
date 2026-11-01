@@ -1,0 +1,40 @@
+---
+- name: Ensure the books stack folders exist
+  ansible.builtin.file:
+    path: "{{ homelab_stack_dirs.books }}/{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0755"
+  loop:
+    - ""
+    - appdata
+    - appdata/calibre
+
+# The library next to the movies and series; books put in books-ingest are imported into it.
+- name: Ensure the book folders exist
+  ansible.builtin.file:
+    path: "{{ homelab_data_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0775"
+  loop:
+    - media/books
+    - books-ingest
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homelab_stack_dirs.books }}/docker-compose.yml"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+
+- name: Start the books stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ homelab_stack_dirs.books }}"
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
+    recreate: "{{ 'always' if force_recreate | default(false) | bool else 'auto' }}"

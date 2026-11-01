@@ -22,5 +22,10 @@ vault_homelab_repo: ""
 # Optional, with vault_homelab_repo: a GitHub card on Homepage (release, CI, open PRs). A
 # fine-grained token for this repo only, read-only: Actions, Contents and Pull requests.
 vault_github_token: ""
+# Optional: more Calibre-Web users (one for each Kobo), created when missing. The kobo_token
+# (optional, 32 characters, from Profile > Kobo Sync Token) keeps a Kobo syncing after a
+# reinstall; for the shared login give only its name and kobo_token.
+# vault_calibre_users:
+#   - { name: reader, email: reader@example.com, password: "", kobo_token: "" }
 # Optional: a peer port forwarded by your VPN provider, e.g. 24257
 # vault_torrent_port: 24257
