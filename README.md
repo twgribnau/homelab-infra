@@ -151,23 +151,25 @@ All optional; without them nothing of it is installed. None of the above needs G
 
 ## Layout
 
+The linked folders have a short README of their own.
+
 | Path | Purpose |
 |---|---|
 | `provision.yml` | The playbook: the roles in order |
 | `inventory/group_vars/homelab/main.yml` | Settings shared by several roles |
 | `setup.sh` | First-time setup: Ansible, Tailscale, links your configuration and encrypts its secrets |
-| `config/` | Your configuration (not in this repo, see above); examples in `config.example/` |
+| `config/` | Your configuration (not in this repo, see above); examples in [`config.example/`](config.example) |
 | `roles/*/defaults/main.yml` | Settings of one role you may change |
 | `roles/*/vars/main.yml` | Fixed values of one role |
-| `roles/docker` | Docker Engine and Compose |
-| `roles/homelab_common` | Shared Docker network and the `/data` folders |
-| `roles/download_stack`, `media_stack`, `books_stack`, `monitoring_stack` | One Docker Compose project each |
-| `roles/app_config` | Configures and connects the apps through their APIs, one task file per app |
-| `roles/tailscale` | Keeps Tailscale updated, publishes the web UIs with `tailscale serve` |
-| `library/` | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs and Calibre-Web's database |
-| `filter_plugins/` | Password hash for qBittorrent's first-start config, Bazarr's settings form |
+| [`roles/docker`](roles/docker) | Docker Engine and Compose |
+| [`roles/homelab_common`](roles/homelab_common) | Shared Docker network and the `/data` folders |
+| [`roles/download_stack`](roles/download_stack), [`media_stack`](roles/media_stack), [`books_stack`](roles/books_stack), [`monitoring_stack`](roles/monitoring_stack) | One Docker Compose project each |
+| [`roles/app_config`](roles/app_config) | Configures and connects the apps through their APIs, one task file per app |
+| [`roles/tailscale`](roles/tailscale) | Keeps Tailscale updated, publishes the web UIs with `tailscale serve` |
+| [`library/`](library) | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs and Calibre-Web's database |
+| [`filter_plugins/`](filter_plugins) | Password hash for qBittorrent's first-start config, Bazarr's settings form |
 | `roles/autodeploy` | Automatic deploys (Extras) |
-| `.github/`, `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
+| [`.github/workflows/`](.github/workflows), `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
 
 ## What gets configured
 
