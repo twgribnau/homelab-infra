@@ -1,6 +1,7 @@
 *.retry
 .vault_pass
-# A link to your private secrets repo (README).
+# A link to your private config repo (README); secrets/ is its old name.
+/config
 /secrets
 __pycache__/
 *.pyc

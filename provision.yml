@@ -9,25 +9,31 @@
   become: true
 
   pre_tasks:
-    # Your secrets and own settings: every .yml in secrets/, a link to your private repo (README).
-    - name: Check that secrets/vault.yml exists
+    # Your configuration: every .yml in config/, a link to your private repo (README).
+    - name: Check that config/vault.yml exists
       ansible.builtin.assert:
-        that: (playbook_dir ~ '/secrets/vault.yml') is file
-        fail_msg: No secrets/vault.yml. Run ./setup.sh first.
+        that: (homelab_config_dir ~ '/vault.yml') is file
+        fail_msg: No config/vault.yml. Run ./setup.sh first.
         quiet: true
       tags: always
 
-    - name: Read your secrets and settings
+    - name: Warn about the old name of the config folder
+      ansible.builtin.debug:
+        msg: Your configuration is in secrets/, its old name. Rename the link to config/ (README).
+      when: homelab_config_dir is search('/secrets$')
+      tags: always
+
+    - name: Read your configuration
       ansible.builtin.include_vars:
         file: "{{ item }}"
-      loop: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/secrets/*.yml') | sort }}"
+      loop: "{{ query('ansible.builtin.fileglob', homelab_config_dir ~ '/*.yml') | sort }}"
       no_log: true
       tags: always
 
     - name: Check the required keys in secrets/vault.yml
       ansible.builtin.assert:
         that: lookup('ansible.builtin.vars', item, default='') | string | length > 0
-        fail_msg: Fill in {{ item }} in secrets/vault.yml (ansible-vault edit secrets/vault.yml).
+        fail_msg: Fill in {{ item }} in config/vault.yml (ansible-vault edit config/vault.yml).
         quiet: true
       loop:
         - vault_homelab_user

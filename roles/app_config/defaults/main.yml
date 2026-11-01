@@ -32,16 +32,9 @@ app_config_cleanuparr_metadata_strikes: 3
 # Stalled: no download progress. A strike is dropped again as soon as it progresses.
 app_config_cleanuparr_stalled_strikes: 6
 
-# Optional: Maintainerr removes what has been watched (templates/maintainerr-*.yml.j2), when
-# this is true. Without it Maintainerr removes nothing until you make rules in its UI.
-app_config_maintainerr_rules: false
-# Watched means: by whoever requested it in Seerr, or by anyone when nobody requested it;
-# favourites never. Series per complete season, once every episode is watched. From this many
-# days after the last view, it waits in a "Leaving soon" collection in Jellyfin, then it goes.
-app_config_maintainerr_days:
-  movie: 14
-  season: 3
-app_config_maintainerr_leaving_days: 7
+# Maintainerr's rule groups, from config/maintainerr.yml (example: config.example/maintainerr.yml,
+# which removes what has been watched). None: Maintainerr removes nothing until you make rules.
+app_config_maintainerr_rule_groups: []
 
 # What goes to Telegram (when it is set up): imports, imports that need you, errors and
 # app updates. Sonarr sends one message per import, so a season pack is one message.
@@ -69,11 +62,10 @@ app_config_seerr_telegram_types: 146
 # Bazarr's language profile, the default for every movie and series. Subtitles are searched
 # for each language (ISO 639-1 codes). Changing the languages later is done in Bazarr itself.
 app_config_bazarr_profile:
-  name: Dutch and English
+  name: English
   languages:
-    - nl
     - en
-# Bazarr's subtitle providers that need no account and have Dutch: subtitles already inside the
+# Bazarr's subtitle providers that need no account: subtitles already inside the
 # video files, subf2m (the Subscene archive) and Gestdown (Addic7ed, series only). Providers you
 # enable in Bazarr itself are kept, except the dead ones in app_config_bazarr_providers_dead.
 app_config_bazarr_providers:
@@ -86,7 +78,7 @@ app_config_bazarr_providers_dead:
 # Plus opensubtitles.com, enabled when the vault has an account.
 app_config_opensubtitles_username: "{{ vault_opensubtitles_username | default('') }}"
 app_config_opensubtitles_password: "{{ vault_opensubtitles_password | default('') }}"
-# Plus SubDL and Subsource (large Dutch collections), each enabled when the vault has its API key.
+# Plus SubDL and Subsource (large collections, many languages), each enabled when the vault has its API key.
 app_config_subdl_api_key: "{{ vault_subdl_api_key | default('') }}"
 app_config_subsource_api_key: "{{ vault_subsource_api_key | default('') }}"
 
@@ -94,17 +86,17 @@ app_config_subsource_api_key: "{{ vault_subsource_api_key | default('') }}"
 app_config_github_repo: "{{ homelab_repo | regex_replace('^git@[^:]+:', '') | regex_replace('\\.git$', '') }}"
 app_config_github_token: "{{ vault_github_token | default('') }}"
 
-# Prowlarr's indexers (the sites it searches), from secrets/indexers.yml. Indexers you add in
-# Prowlarr itself are kept. Example: secrets.example/indexers.yml
+# Prowlarr's indexers (the sites it searches), from config/indexers.yml. Indexers you add in
+# Prowlarr itself are kept. Example: config.example/indexers.yml
 app_config_prowlarr_indexers: []
 
-# Calibre-Web users besides the shared login, from the vault (secrets.example/vault.yml).
+# Calibre-Web users besides the shared login, from the vault (config.example/vault.yml).
 # Created when missing; users you add in Calibre-Web itself are left alone.
 app_config_calibre_users: "{{ vault_calibre_users | default([]) }}"
 
 app_config_jellyfin_server_name: Homelab
 app_config_jellyfin_language: en
-app_config_jellyfin_country: NL
+app_config_jellyfin_country: US
 # Created when missing. Libraries, users and profiles you add yourself are left alone.
 app_config_jellyfin_libraries:
   - { name: Movies, type: movies, path: /data/media/movies }
@@ -112,12 +104,15 @@ app_config_jellyfin_libraries:
 # Optional: one home screen for every user, row by row; the rest stays empty. Rows: resume
 # (Continue Watching), nextup, latestmedia (Recently Added), librarybuttons (My Media, small),
 # smalllibrarytiles, resumeaudio, resumebook, livetv. The web app and the TV apps built on it show
-# it; changes made in Jellyfin itself are set back on the next run. Example: secrets.example/local.yml
+# it; changes made in Jellyfin itself are set back on the next run. Example: config.example/jellyfin.yml
 app_config_jellyfin_home: []
 # Optional: your login and those users as tiles on Jellyfin's login screen, to pick a profile
 # like on Netflix (with a password). Without it they stay hidden, Jellyfin's default.
 app_config_jellyfin_profile_tiles: false
-# More users besides your login, from the vault (secrets.example/vault.yml): created when
+# Optional: a profile picture per user, a file in config/ (config.example/jellyfin.yml). Set when
+# the user has none yet.
+app_config_jellyfin_images: {}
+# More users besides your login, from the vault (config.example/vault.yml): created when
 # missing, not admins, with every library and their own watch history. Users you add in
 # Jellyfin itself are left alone.
 app_config_jellyfin_users: "{{ vault_jellyfin_users | default([]) }}"

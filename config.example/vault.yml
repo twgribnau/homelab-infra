@@ -1,6 +1,6 @@
 ---
-# Copy this to secrets/vault.yml and fill it in; ./setup.sh encrypts it. Change it later with:
-#   ansible-vault edit secrets/vault.yml
+# Copy this to config/vault.yml and fill it in; ./setup.sh encrypts it. Change it later with:
+#   ansible-vault edit config/vault.yml
 
 vault_homelab_user: ""       # the server's login user (owns the app folders)
 vault_homelab_password: ""   # the login for every service

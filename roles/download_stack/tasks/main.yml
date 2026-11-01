@@ -17,7 +17,7 @@
 
 - name: Deploy the WireGuard config
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/secrets/wg0.conf"
+    src: "{{ homelab_config_dir }}/wg0.conf"
     dest: "{{ homelab_stack_dirs.download }}/wireguard/wg0.conf"
     owner: "{{ homelab_uid }}"
     group: "{{ homelab_gid }}"
@@ -28,7 +28,7 @@
 
 - name: Warn that qBittorrent runs without a VPN
   ansible.builtin.debug:
-    msg: No secrets/wg0.conf, so qBittorrent downloads without a VPN, from your own IP address.
+    msg: No config/wg0.conf, so qBittorrent downloads without a VPN, from your own IP address.
   when: not homelab_vpn | bool and not homelab_ci | bool
 
 # Only when qBittorrent has no config yet, so it starts with the shared login instead

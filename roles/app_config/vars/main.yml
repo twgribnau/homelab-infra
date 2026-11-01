@@ -51,19 +51,6 @@ app_config_app_names:
   grafana: Grafana
   homepage: Homepage
 
-# Maintainerr's rule groups, made when missing; changes you make in its UI are kept. The name is
-# also the collection's name in Jellyfin.
-app_config_maintainerr_rule_groups:
-  - name: Leaving soon (movies)
-    library: Movies
-    type: movie
-    arr: radarr
-    action: 0   # remove the movie in Radarr
-  - name: Leaving soon (series)
-    library: Series
-    type: season
-    arr: sonarr
-    action: 0   # unmonitor the season in Sonarr and delete its files
 # Telegram: warnings before removal, removals and failures (8 + 16 + 32 + 64).
 app_config_maintainerr_telegram_types:
   - 8
