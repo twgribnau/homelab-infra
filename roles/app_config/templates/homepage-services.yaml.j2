@@ -86,6 +86,10 @@
         icon: cleanuparr.png
         href: {{ web }}:11011
         siteMonitor: http://cleanuparr:11011/health
+    - Maintainerr:
+        icon: maintainerr.png
+        href: {{ web }}:6246
+        siteMonitor: http://maintainerr:6246
 
 {% if homelab_monitoring | bool or (app_config_github_repo and app_config_github_token) %}
 - System:

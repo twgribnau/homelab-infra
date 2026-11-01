@@ -32,6 +32,17 @@ app_config_cleanuparr_metadata_strikes: 3
 # Stalled: no download progress. A strike is dropped again as soon as it progresses.
 app_config_cleanuparr_stalled_strikes: 6
 
+# Optional: Maintainerr removes what has been watched (templates/maintainerr-*.yml.j2), when
+# this is true. Without it Maintainerr removes nothing until you make rules in its UI.
+app_config_maintainerr_rules: false
+# Watched means: by whoever requested it in Seerr, or by anyone when nobody requested it;
+# favourites never. Series per complete season, once every episode is watched. From this many
+# days after the last view, it waits in a "Leaving soon" collection in Jellyfin, then it goes.
+app_config_maintainerr_days:
+  movie: 14
+  season: 3
+app_config_maintainerr_leaving_days: 7
+
 # What goes to Telegram (when it is set up): imports, imports that need you, errors and
 # app updates. Sonarr sends one message per import, so a season pack is one message.
 app_config_telegram_events:

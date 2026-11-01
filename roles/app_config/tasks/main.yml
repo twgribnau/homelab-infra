@@ -10,12 +10,13 @@
   ansible.builtin.import_tasks: qbittorrent.yml
   tags: qbittorrent
 
-# Also with --tags homepage: these read the API keys Homepage needs.
+# Also with --tags homepage or maintainerr: these read the API keys those need.
 - name: Jellyfin
   ansible.builtin.import_tasks: jellyfin.yml
   tags:
     - jellyfin
     - homepage
+    - maintainerr
 
 - name: Radarr and Sonarr
   ansible.builtin.import_tasks: arrs.yml
@@ -38,6 +39,11 @@
   tags:
     - seerr
     - homepage
+    - maintainerr
+
+- name: Maintainerr
+  ansible.builtin.import_tasks: maintainerr.yml
+  tags: maintainerr
 
 - name: Bazarr
   ansible.builtin.import_tasks: bazarr.yml

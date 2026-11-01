@@ -11,6 +11,7 @@ app_config_urls:
   seerr: "http://127.0.0.1:{{ homelab_ports.seerr }}"
   bazarr: "http://127.0.0.1:{{ homelab_ports.bazarr }}"
   cleanuparr: "http://127.0.0.1:{{ homelab_ports.cleanuparr }}"
+  maintainerr: "http://127.0.0.1:{{ homelab_ports.maintainerr }}"
 
 # API version, Compose stack, and the config file holding the API key each app generates.
 app_config_servarr:
@@ -49,6 +50,25 @@ app_config_app_names:
   maintainerr: Maintainerr
   grafana: Grafana
   homepage: Homepage
+# Maintainerr's rule groups, made when missing; changes you make in its UI are kept. The name is
+# also the collection's name in Jellyfin.
+app_config_maintainerr_rule_groups:
+  - name: Leaving soon (movies)
+    library: Movies
+    type: movie
+    arr: radarr
+    action: 0   # remove the movie in Radarr
+  - name: Leaving soon (series)
+    library: Series
+    type: season
+    arr: sonarr
+    action: 0   # unmonitor the season in Sonarr and delete its files
+# Telegram: warnings before removal, removals and failures (8 + 16 + 32 + 64).
+app_config_maintainerr_telegram_types:
+  - 8
+  - 16
+  - 32
+  - 64
 
 app_config_jellyfin_client: 'MediaBrowser Client="homelab-ansible", Device="ansible", DeviceId="homelab-ansible", Version="1.0"'
 app_config_jellyfin_settings:

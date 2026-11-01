@@ -13,6 +13,7 @@
     - appdata/radarr
     - appdata/sonarr
     - appdata/seerr
+    - appdata/maintainerr
     - appdata/recyclarr
     - appdata/bazarr
 

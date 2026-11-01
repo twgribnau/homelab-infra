@@ -46,18 +46,19 @@
   loop_control:
     label: "{{ item.name }}"
 
-- name: Arr | Refresh Jellyfin after imports
+# Also after deletes (Maintainerr's too), so Jellyfin drops them without waiting for its scan.
+- name: Arr | Refresh Jellyfin after imports and deletes
+  vars:
+    _deletes:
+      radarr: { onMovieDelete: true, onMovieFileDelete: true }
+      sonarr: { onSeriesDelete: true, onEpisodeFileDelete: true }
   servarr_resource:
     url: "{{ app_config_urls[item.name] }}"
     api_key: "{{ _app_config_api_keys[item.name] }}"
     endpoint: notification
     schema:
       implementation: MediaBrowser
-    body:
-      name: Emby / Jellyfin
-      onDownload: true
-      onUpgrade: true
-      onRename: true
+    body: "{{ {'name': 'Emby / Jellyfin', 'onDownload': true, 'onUpgrade': true, 'onRename': true} | combine(_deletes[item.name]) }}"
     fields:
       host: jellyfin
       port: 8096

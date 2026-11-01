@@ -73,6 +73,7 @@ homelab_ports:
   homepage: 3001
   calibre: 8083
   cleanuparr: 11011
+  maintainerr: 6246
 
 # Peer port qBittorrent listens on inside the VPN. A port forwarded by the VPN provider
 # (AirVPN: Client Area > Ports) in the vault makes it reachable for other peers.
