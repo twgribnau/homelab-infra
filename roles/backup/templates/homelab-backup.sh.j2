@@ -1,0 +1,52 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Backs up the app data and the ebook library to {{ homelab_backup_remote }}, encrypted. The apps
+# stop only while their data is copied to {{ backup_staging_dir }} (seconds after the first
+# time), so the copy is consistent; the upload runs from that copy with the apps back up. Keeps
+# {{ backup_keep_daily }} daily, {{ backup_keep_weekly }} weekly and {{ backup_keep_monthly }} monthly backups.
+# Started by homelab-backup.timer; the output is in: journalctl -u homelab-backup
+set -uo pipefail
+stacks=()
+for dir in {{ homelab_stack_dirs.values() | join(' ') }}; do [ -d "$dir" ] && stacks+=("$dir"); done  # optional ones may be off
+backup_dirs=("${stacks[@]}")
+[ -d {{ homelab_data_dir }}/media/books ] && backup_dirs+=({{ homelab_data_dir }}/media/books)
+staging={{ backup_staging_dir }}
+
+notify() {
+  [ -n "${TELEGRAM_BOT_TOKEN:-}" ] || return 0
+  curl -s -o /dev/null --max-time 20 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" --data-urlencode "text=$1"
+}
+fail() { echo "$1" >&2; notify "❌ Homelab backup to {{ homelab_backup_remote }} failed: $1. journalctl -u homelab-backup"; exit 1; }
+compose() { for dir in "${stacks[@]}"; do docker compose --project-directory "$dir" "$1"; done; }
+
+# One at a time with the automatic deploys (they skip a check while this holds the lock).
+lock={{ homelab_lock }}
+[ -e "$lock" ] || : >"$lock"
+exec 9<"$lock"
+flock -w 3600 9 || fail "a deploy held the lock for an hour"
+# A run of the playbook by hand goes first too: wait for it, at most an hour.
+for _ in $(seq 120); do
+  pgrep -f '^[^ ]*python[^ ]* [^ ]*/ansible-playbook( |$)' >/dev/null || break
+  sleep 30
+done
+
+restic cat config >/dev/null 2>&1 || restic init || fail "the backup repository can't be reached or made"
+
+# The apps are started again whatever happens, also when this script is stopped halfway.
+stopped=false
+trap '$stopped && compose start' EXIT
+stopped=true
+compose stop
+for dir in "${backup_dirs[@]}"; do
+  mkdir -p "$staging$dir"
+  rsync -a --delete --exclude prometheus/data "$dir/" "$staging$dir/" || fail "copying $dir failed"
+done
+compose start
+stopped=false
+
+# Snapshots keep the apps' own paths, so a restore puts files where they belong.
+cd "$staging" || fail "no $staging"
+restic backup --tag nightly "${backup_dirs[@]#/}" || fail "restic backup stopped with code $?"
+restic forget --tag nightly --prune --keep-daily {{ backup_keep_daily }} --keep-weekly {{ backup_keep_weekly }} --keep-monthly {{ backup_keep_monthly }} ||
+  fail "removing old backups failed"

@@ -74,6 +74,9 @@
       when: homelab_monitoring | bool or homelab_homepage | bool
     - role: app_config
       tags: apps
+    - role: backup
+      tags: backup
+      when: homelab_backup_remote | length > 0
     - role: autodeploy
       tags: autodeploy
       when: homelab_repo | default('') | length > 0

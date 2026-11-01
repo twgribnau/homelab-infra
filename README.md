@@ -149,6 +149,42 @@ All optional; without them nothing of it is installed. None of the above needs G
   With Telegram too: a bot for `/deploy`, `/status` and `/log`.
 - **GitHub card on Homepage** (`vault_github_token`, with automatic deploys): a read-only
   fine-grained token (Actions, Contents, Pull requests) for your fork.
+- **Offsite backup** (`homelab_backup_remote`, see below): every night the app data and the
+  ebook library, encrypted, to the cloud.
+
+### Offsite backup
+
+Every night at 04:00 the apps stop while their data is copied to `/backup/staging` (seconds,
+after the first time), then [restic](https://restic.net) backs up that copy (settings, watch
+history, requests) and your ebooks, encrypted with
+`vault_backup_password`, through [rclone](https://rclone.org) to Google Drive, OneDrive,
+Backblaze B2 or [another cloud](https://rclone.org/overview/). Not the movies and series: Radarr
+and Sonarr get them again. It is about 1–2 GB, and each night adds only what changed. It keeps 7
+daily, 4 weekly and 6 monthly backups; on failure Telegram tells you. It never runs at the same time as an
+automatic deploy. Log: `journalctl -u homelab-backup`.
+
+For Google Drive, once, on a computer with a browser:
+[install rclone](https://rclone.org/install/) and run
+`rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLmZpbGUifQ"` (that is `{"scope":"drive.file"}`).
+It opens Google; afterwards it prints a token. Then, in `config/vault.yml`:
+
+```yaml
+vault_rclone_config: |
+  [gdrive]
+  type = drive
+  scope = drive.file
+  token = <the token it printed, on one line>
+```
+
+and in `config/settings.yml` the folder: `homelab_backup_remote: "gdrive:Backup/homelab"`.
+`drive.file` only lets it see the files it made itself, not the rest of your Drive, so let it
+make that folder (don't make it yourself). Other clouds: `rclone config` writes such a section.
+
+Getting things out, also on another computer with restic and rclone: put the repository and the
+password in the environment (on the server: `sudo -i` and `set -a; . /etc/homelab-backup/env`),
+then `restic snapshots` lists the backups, `restic restore latest --target ~/restore` puts
+everything back as plain files (`--include '*.epub'` for only the ebooks), and `restic mount
+~/backup` lets you browse them as folders.
 
 ## Layout
 
@@ -168,6 +204,7 @@ All optional; without them nothing of it is installed. None of the above needs G
 | `library/` | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs and Calibre-Web's database |
 | `filter_plugins/` | Password hash for qBittorrent's first-start config, Bazarr's settings form |
 | `roles/autodeploy` | Automatic deploys (Extras) |
+| `roles/backup` | Offsite backup (Extras) |
 | `.github/`, `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
 
 ## What gets configured

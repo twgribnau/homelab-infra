@@ -6,6 +6,10 @@
 # Started by homelab-autodeploy.timer; the full output is in: journalctl -u homelab-autodeploy
 set -uo pipefail
 cd {{ autodeploy_dir }} || exit 1
+# Not while the nightly backup holds the lock: the next check picks the change up.
+[ -e {{ homelab_lock }} ] || : >{{ homelab_lock }}
+exec 9<{{ homelab_lock }}
+flock -n 9 || exit 0
 export GIT_SSH_COMMAND="ssh -i {{ autodeploy_key }} -o IdentitiesOnly=yes"
 stacks=()
 for dir in {{ homelab_stack_dirs.values() | join(' ') }}; do [ -d "$dir" ] && stacks+=("$dir"); done  # optional ones may be off

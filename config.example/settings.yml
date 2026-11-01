@@ -6,6 +6,8 @@ homelab_monitoring: true
 homelab_homepage: true
 homelab_books: true
 homelab_tailscale: true
+# A nightly backup of the app data and ebooks to the cloud (README, Offsite backup), e.g.:
+# homelab_backup_remote: "gdrive:Backup/homelab"
 # The time zone of the apps (default Etc/UTC), e.g.:
 # homelab_tz: Europe/Amsterdam
 # Subtitle languages (default English), e.g.:
