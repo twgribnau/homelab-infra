@@ -27,7 +27,7 @@
 {% if homelab_books | bool %}
     - Calibre-Web:
         icon: calibre-web.png
-        href: http://{{ homelab_host }}:{{ homelab_ports.calibre }}
+        href: {{ web }}:{{ 8443 if ts else homelab_ports.calibre }}
         siteMonitor: http://calibre:8083
         widget:
           type: calibreweb
