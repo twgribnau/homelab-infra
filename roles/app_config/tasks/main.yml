@@ -57,6 +57,16 @@
   when: homelab_books | bool
   tags: calibre
 
+# Every web UI at the address that works for you, to import in your browser.
+- name: Bookmarks file
+  ansible.builtin.template:
+    src: bookmarks.html.j2
+    dest: "{{ homelab_base_dir }}/bookmarks.html"
+    owner: "{{ homelab_uid }}"
+    group: "{{ homelab_gid }}"
+    mode: "0644"
+  tags: bookmarks
+
 - name: Homepage
   ansible.builtin.import_tasks: homepage.yml
   when: homelab_homepage | bool
