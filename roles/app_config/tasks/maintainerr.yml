@@ -1,0 +1,179 @@
+---
+# Connects Maintainerr to Jellyfin, Radarr, Sonarr, Seerr and Telegram, and adds the rule groups
+# (vars/main.yml, templates/maintainerr-*.yml.j2). Each is added when missing; what you change in
+# Maintainerr itself is kept. Maintainerr has no login.
+
+- name: Maintainerr | Read the connections
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/settings/{{ item }}"
+  loop:
+    - jellyfin
+    - radarr
+    - sonarr
+    - seerr
+  register: _app_config_maintainerr_read
+  check_mode: false
+  no_log: true
+
+- name: Maintainerr | Remember the connections
+  ansible.builtin.set_fact:
+    _app_config_maintainerr: >-
+      {{ dict(_app_config_maintainerr_read.results | map(attribute='item')
+              | zip(_app_config_maintainerr_read.results | map(attribute='json'))) }}
+  no_log: true
+
+# Also makes Jellyfin its media server; the API key is the one Radarr and Sonarr use.
+- name: Maintainerr | Jellyfin
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/settings/jellyfin"
+    method: POST
+    body_format: json
+    body:
+      jellyfin_url: http://jellyfin:8096
+      jellyfin_api_key: "{{ _app_config_jellyfin_api_key }}"
+    status_code: 201
+  register: _app_config_maintainerr_jellyfin
+  when: not _app_config_maintainerr.jellyfin.jellyfin_url
+  changed_when: true
+  failed_when: _app_config_maintainerr_jellyfin.json.status | default('NOK') != 'OK'
+  no_log: true
+
+- name: Maintainerr | Radarr and Sonarr
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/settings/{{ item.name }}"
+    method: POST
+    body_format: json
+    body:
+      serverName: "{{ item.name | capitalize }}"
+      url: "http://{{ item.name }}:{{ item.port }}"
+      apiKey: "{{ _app_config_api_keys[item.name] }}"
+    status_code: 201
+  loop: "{{ app_config_arrs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _app_config_maintainerr_arrs
+  when: _app_config_maintainerr[item.name] | length == 0
+  changed_when: true
+  failed_when: _app_config_maintainerr_arrs.json.status | default('NOK') != 'OK'
+  no_log: true
+
+- name: Maintainerr | Seerr
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/settings/seerr"
+    method: POST
+    body_format: json
+    body:
+      url: http://seerr:5055
+      api_key: "{{ _app_config_seerr_key }}"
+    status_code: 201
+  register: _app_config_maintainerr_seerr
+  when: not _app_config_maintainerr.seerr.url
+  changed_when: true
+  failed_when: _app_config_maintainerr_seerr.json.status | default('NOK') != 'OK'
+  no_log: true
+
+- name: Maintainerr | Read the Telegram notifications
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/notifications/configurations"
+  register: _app_config_maintainerr_notifications
+  check_mode: false
+  no_log: true
+  when: homelab_telegram | bool
+
+- name: Maintainerr | Telegram notifications
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/notifications/configuration/add"
+    method: POST
+    body_format: json
+    body:
+      agent: telegram
+      name: Telegram
+      enabled: true
+      types: "{{ app_config_maintainerr_telegram_types }}"
+      aboutScale: 3   # warn this many days before a removal
+      options:
+        botAuthToken: "{{ homelab_telegram_bot_token }}"
+        chatId: "{{ homelab_telegram_chat_id }}"
+    status_code: 201
+  register: _app_config_maintainerr_telegram
+  when:
+    - homelab_telegram | bool
+    - "'telegram' not in _app_config_maintainerr_notifications.json | map(attribute='agent')"
+  changed_when: true
+  failed_when: _app_config_maintainerr_telegram.json.code | default(0) != 1
+  no_log: true
+
+# Read again: the steps above may just have added the servers and the notification.
+- name: Maintainerr | Read the rule groups, libraries, servers and notifications
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/{{ item }}"
+  loop:
+    - rules
+    - media-server/libraries
+    - settings/radarr
+    - settings/sonarr
+    - notifications/configurations
+  register: _app_config_maintainerr_read
+  check_mode: false
+  no_log: true
+
+- name: Maintainerr | Remember them
+  ansible.builtin.set_fact:
+    _app_config_maintainerr: >-
+      {{ dict(_app_config_maintainerr_read.results | map(attribute='item')
+              | zip(_app_config_maintainerr_read.results | map(attribute='json'))) }}
+  no_log: true
+
+# Maintainerr turns the rules from its YAML format into the form it saves.
+- name: Maintainerr | Read the rules of missing rule groups
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/rules/yaml/decode"
+    method: POST
+    body_format: json
+    body:
+      yaml: "{{ lookup('ansible.builtin.template', 'maintainerr-' ~ item.type ~ '.yml.j2') }}"
+      mediaType: "{{ item.type }}"
+    status_code: 201
+  loop: "{{ app_config_maintainerr_rule_groups }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _app_config_maintainerr_rules
+  when:
+    - app_config_maintainerr_rules | bool
+    - item.name not in _app_config_maintainerr.rules | map(attribute='name')
+  failed_when: _app_config_maintainerr_rules.json.code | default(0) != 1
+  check_mode: false
+
+- name: Maintainerr | Rule groups
+  vars:
+    _group: "{{ item.item }}"
+    _library: "{{ _app_config_maintainerr['media-server/libraries'] | selectattr('title', 'equalto', _group.library) | first }}"
+    _server: "{{ _app_config_maintainerr['settings/' ~ _group.arr] | first }}"
+    _body:
+      name: "{{ _group.name }}"
+      description: Watched, by the rules in homelab-infra (roles/app_config/templates/maintainerr-*.yml.j2)
+      libraryId: "{{ _library.id }}"
+      dataType: "{{ _group.type }}"
+      isActive: true
+      useRules: true
+      arrAction: "{{ _group.action }}"
+      listExclusions: true
+      collection:
+        deleteAfterDays: "{{ app_config_maintainerr_leaving_days }}"
+        visibleOnHome: true
+        visibleOnRecommended: true
+        keepLogsForMonths: 6
+      notifications: "{{ _app_config_maintainerr['notifications/configurations'] | selectattr('agent', 'equalto', 'telegram') | list }}"
+      rules: "{{ (item.json.result | from_json).rules }}"
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.maintainerr }}/api/rules"
+    method: POST
+    body_format: json
+    body: "{{ _body | combine({_group.arr ~ 'SettingsId': _server.id}) }}"
+    status_code: 201
+  loop: "{{ _app_config_maintainerr_rules.results | rejectattr('skipped', 'defined') }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  register: _app_config_maintainerr_groups
+  changed_when: true
+  failed_when: _app_config_maintainerr_groups.json.code | default(0) != 1

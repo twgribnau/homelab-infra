@@ -8,3 +8,5 @@ homelab_books: true
 homelab_tailscale: true
 # For example the subtitle languages:
 # app_config_bazarr_profile: { name: Dutch and English, languages: [nl, en] }
+# Maintainerr's rules: remove what has been watched (roles/app_config/defaults/main.yml)
+# app_config_maintainerr_rules: true

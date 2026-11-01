@@ -9,7 +9,7 @@ publishes their web UIs over Tailscale HTTPS, or on the LAN.
 | | |
 |---|---|
 | **Watch and request** | [![Jellyfin](https://img.shields.io/badge/Jellyfin-00A4DC?style=for-the-badge&logo=jellyfin&logoColor=white)](https://jellyfin.org) [![Seerr](https://img.shields.io/badge/Seerr-5969F8?style=for-the-badge)](https://github.com/seerr-team/seerr) |
-| **Find and download** | [![Prowlarr](https://img.shields.io/badge/Prowlarr-E66000?style=for-the-badge)](https://prowlarr.com) [![Radarr](https://img.shields.io/badge/Radarr-FFCB3D?style=for-the-badge&logo=radarr&logoColor=white)](https://radarr.video) [![Sonarr](https://img.shields.io/badge/Sonarr-2596BE?style=for-the-badge&logo=sonarr&logoColor=white)](https://sonarr.tv) [![qBittorrent](https://img.shields.io/badge/qBittorrent-2F67BA?style=for-the-badge&logo=qbittorrent&logoColor=white)](https://www.qbittorrent.org) [![Cleanuparr](https://img.shields.io/badge/Cleanuparr-7C3AED?style=for-the-badge)](https://github.com/Cleanuparr/Cleanuparr) [![Recyclarr](https://img.shields.io/badge/Recyclarr-4B5563?style=for-the-badge)](https://recyclarr.dev) |
+| **Find and download** | [![Prowlarr](https://img.shields.io/badge/Prowlarr-E66000?style=for-the-badge)](https://prowlarr.com) [![Radarr](https://img.shields.io/badge/Radarr-FFCB3D?style=for-the-badge&logo=radarr&logoColor=white)](https://radarr.video) [![Sonarr](https://img.shields.io/badge/Sonarr-2596BE?style=for-the-badge&logo=sonarr&logoColor=white)](https://sonarr.tv) [![qBittorrent](https://img.shields.io/badge/qBittorrent-2F67BA?style=for-the-badge&logo=qbittorrent&logoColor=white)](https://www.qbittorrent.org) [![Cleanuparr](https://img.shields.io/badge/Cleanuparr-7C3AED?style=for-the-badge)](https://github.com/Cleanuparr/Cleanuparr) [![Maintainerr](https://img.shields.io/badge/Maintainerr-D97706?style=for-the-badge)](https://github.com/maintainerr/maintainerr) [![Recyclarr](https://img.shields.io/badge/Recyclarr-4B5563?style=for-the-badge)](https://recyclarr.dev) |
 | **Optional** | [![Bazarr](https://img.shields.io/badge/Bazarr-3A6EA5?style=for-the-badge)](https://www.bazarr.media) [![Calibre-Web](https://img.shields.io/badge/Calibre--Web-45B29D?style=for-the-badge&logo=calibreweb&logoColor=white)](https://github.com/crocodilestick/Calibre-Web-Automated) [![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com) [![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io) [![Homepage](https://img.shields.io/badge/Homepage-009BD5?style=for-the-badge&logo=homepage&logoColor=white)](https://gethomepage.dev) |
 | **Built on** | [![Ansible](https://img.shields.io/badge/Ansible-EE0000?style=for-the-badge&logo=ansible&logoColor=white)](https://www.ansible.com) [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com) [![Tailscale](https://img.shields.io/badge/Tailscale-242424?style=for-the-badge&logo=tailscale&logoColor=white)](https://tailscale.com) [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=for-the-badge&logo=wireguard&logoColor=white)](https://www.wireguard.com) |
 
@@ -50,7 +50,7 @@ Both can be run again. Afterwards the apps are at:
 | Jellyfin (watch) | `https://<server>.<tailnet>.ts.net:8920`, and `http://<server-ip>:8096` at home | `http://<server-ip>:8096` |
 | Homepage (every app on one page) | `:3001` | `:3001` |
 | Calibre-Web (ebooks) | `http://<server>.<tailnet>.ts.net:8083`, and `http://<server-ip>:8083` at home | `http://<server-ip>:8083` |
-| Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Cleanuparr `:11011`, Grafana `:3000` | | |
+| Radarr `:7878`, Sonarr `:8989`, Bazarr `:6767`, Prowlarr `:9696`, qBittorrent `:8080`, Cleanuparr `:11011`, Maintainerr `:6246`, Grafana `:3000` | | |
 
 Log in with the username and password from your `vault.yml`.
 
@@ -95,7 +95,7 @@ Choose in `secrets/local.yml`, then run the playbook again.
 
 With Tailscale: in the [admin console](https://login.tailscale.com/admin/dns), DNS, turn on
 MagicDNS and HTTPS Certificates. The core apps (qBittorrent, Prowlarr, Cleanuparr, Radarr, Sonarr,
-Jellyfin, Seerr) are always installed: they work together.
+Jellyfin, Seerr, Maintainerr) are always installed: they work together.
 
 More subtitles: an [opensubtitles.com](https://www.opensubtitles.com) account
 (`vault_opensubtitles_username`, `vault_opensubtitles_password`) and API keys for
@@ -110,7 +110,7 @@ ansible-playbook provision.yml
 ```
 
 - Run part of it with `--tags docker|download|media|books|monitoring|apps|tailscale`, or one app with
-  `--tags qbittorrent|jellyfin|arrs|prowlarr|cleanuparr|recyclarr|seerr|bazarr|calibre|homepage`.
+  `--tags qbittorrent|jellyfin|arrs|prowlarr|cleanuparr|recyclarr|seerr|maintainerr|bazarr|calibre|homepage`.
 - Preview with `--check --diff` (once Docker is installed).
 - `./reset.sh` wipes the server back to Ubuntu + Tailscale (`--keep-media` keeps the library).
 - Family members only need a Jellyfin user: make one in Jellyfin (Dashboard, Users) and log in
@@ -169,6 +169,7 @@ All optional; without them nothing of it is installed. None of the above needs G
 | Recyclarr | TRaSH Guides 1080p quality profiles (stock profiles removed), custom formats and naming |
 | Jellyfin | Admin account, libraries, hardware transcoding, API key for Radarr/Sonarr |
 | Seerr | Jellyfin login, Radarr/Sonarr as default servers |
+| Maintainerr | Jellyfin, Radarr, Sonarr, Seerr and Telegram. Optionally (`app_config_maintainerr_rules: true`) two rule groups: what has been watched (by whoever requested it in Seerr, else by anyone) goes to a "Leaving soon" collection in Jellyfin 14 days (movies) or 3 days (series, per complete season) after the last view, and is removed 7 days later. Favourites never (`app_config_maintainerr_days`). It has no login |
 | Bazarr | Radarr/Sonarr connection, Dutch and English subtitles for everything (`app_config_bazarr_profile`), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
 | Calibre-Web | Optional (`homelab_books`): your login instead of the default admin, Kobo sync with the Kobo store passed through, more users and their Kobo tokens (`vault_calibre_users`) |
 | Grafana | Optional (`homelab_monitoring`): Prometheus datasource and one Homelab dashboard (server and containers) as home page |

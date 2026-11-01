@@ -6,6 +6,7 @@ tailscale_serve:
   - { app: jellyfin, port: 8920, target: "{{ homelab_ports.jellyfin }}" }
   - { app: radarr, port: 7878, target: "{{ homelab_ports.radarr }}" }
   - { app: sonarr, port: 8989, target: "{{ homelab_ports.sonarr }}" }
+  - { app: maintainerr, port: 6246, target: "{{ homelab_ports.maintainerr }}" }
   - { app: bazarr, port: 6767, target: "{{ homelab_ports.bazarr }}" }
   - { app: prowlarr, port: 9696, target: "{{ homelab_ports.prowlarr }}" }
   - { app: qbittorrent, port: 8080, target: "{{ homelab_ports.qbittorrent }}" }
