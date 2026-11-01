@@ -35,6 +35,21 @@ app_config_arrs:
     category_field: tvCategory
     major_version: 4
 
+# The apps' names in the bookmarks file (templates/bookmarks.html.j2).
+app_config_app_names:
+  seerr: Seerr
+  jellyfin: Jellyfin
+  calibre: Calibre-Web
+  radarr: Radarr
+  sonarr: Sonarr
+  bazarr: Bazarr
+  prowlarr: Prowlarr
+  qbittorrent: qBittorrent
+  cleanuparr: Cleanuparr
+  maintainerr: Maintainerr
+  grafana: Grafana
+  homepage: Homepage
+
 app_config_jellyfin_client: 'MediaBrowser Client="homelab-ansible", Device="ansible", DeviceId="homelab-ansible", Version="1.0"'
 app_config_jellyfin_settings:
   - { path: "", settings: { ServerName: "{{ app_config_jellyfin_server_name }}" } }
