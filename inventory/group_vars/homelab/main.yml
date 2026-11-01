@@ -44,6 +44,13 @@ homelab_books: true        # ebooks, synced to a Kobo
 # Tailscale: the web UIs at https://<host>.<tailnet>.ts.net, from anywhere. Without it they
 # are on the LAN at http://<server>:<port>.
 homelab_tailscale: true
+# A nightly offsite backup to an rclone remote and folder, e.g. "gdrive:Backup/homelab". Empty:
+# none. Its login goes in the vault (vault_rclone_config, README).
+homelab_backup_remote: ""
+# Held by the nightly backup and the automatic deploys, so they never run at the same time.
+homelab_lock: /run/lock/homelab.lock
+# What the deploys, the Telegram bot and the playbook share: the hold on automatic deploys.
+homelab_state_dir: /var/lib/homelab
 # qBittorrent behind a WireGuard VPN, when there is a config/wg0.conf.
 homelab_vpn: "{{ (homelab_config_dir ~ '/wg0.conf') is file }}"
 # The optional web UIs that are off, left out of Tailscale and Homepage.

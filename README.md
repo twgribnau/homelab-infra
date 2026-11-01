@@ -42,7 +42,8 @@ and your VPN's WireGuard config as `~/homelab-config/wg0.conf` (see [Your config
 `setup.sh` asks nothing. It installs Ansible and Tailscale (unless `homelab_tailscale: false`),
 links `~/homelab-config` as `config/` and encrypts your secrets with a new vault password,
 which it shows once (save it in your password manager). The playbook then installs everything.
-Both can be run again. Afterwards the apps are at:
+Both can be run again. With Tailscale, first turn on MagicDNS and HTTPS Certificates in its
+[admin console](https://login.tailscale.com/admin/dns) (DNS). Afterwards the apps are at:
 
 | App | With Tailscale | Without |
 |---|---|---|
@@ -101,10 +102,6 @@ Choose in `config/settings.yml`, then run the playbook again.
 | Indexers | `config/indexers.yml`, or add them in Prowlarr (those are kept) |
 | More settings | Any setting in `inventory/group_vars/homelab/main.yml` or `roles/*/defaults/main.yml` |
 
-With Tailscale: in the [admin console](https://login.tailscale.com/admin/dns), DNS, turn on
-MagicDNS and HTTPS Certificates. The core apps (qBittorrent, Prowlarr, Cleanuparr, Radarr, Sonarr,
-Jellyfin, Seerr, Maintainerr) are always installed: they work together.
-
 More subtitles: an [opensubtitles.com](https://www.opensubtitles.com) account
 (`vault_opensubtitles_username`, `vault_opensubtitles_password`) and API keys for
 [SubDL](https://subdl.com) and [Subsource](https://subsource.net) (`vault_subdl_api_key`,
@@ -145,9 +142,55 @@ All optional; without them nothing of it is installed. None of the above needs G
   images it backs up the app data and the ebook library with [restic](https://restic.net) to
   `/backup/restic`; when the run fails, it puts that backup and the previous commit back. Log:
   `journalctl -u homelab-autodeploy`.
-  With Telegram too: a bot for `/deploy`, `/status` and `/log`.
+  With Telegram too: a bot for `/deploy`, `/status` and `/log`. Running the playbook yourself
+  from a branch puts the automatic deploys on hold, so `main` doesn't replace what you test;
+  from `main` they follow it again. In Telegram: `/hold`, and `/main` to deploy `main` now.
 - **GitHub card on Homepage** (`vault_github_token`, with automatic deploys): a read-only
   fine-grained token (Actions, Contents, Pull requests) for your fork.
+- **Offsite backup** (`homelab_backup_remote`, see below): every night the app data and the
+  ebook library, encrypted, to the cloud.
+
+### Offsite backup
+
+Every night at 04:00 the apps stop while their data is copied to `/backup/staging` (seconds,
+after the first time), then [restic](https://restic.net) backs up that copy (settings, watch
+history, requests) and your ebooks, encrypted with `vault_backup_password`, through
+[rclone](https://rclone.org) to Google Drive, OneDrive, Backblaze B2 or
+[another cloud](https://rclone.org/overview/). Not the movies and series: Radarr and Sonarr get
+them again. It is about 1–2 GB, and each night adds only what changed. It keeps 7 daily, 4
+weekly and 6 monthly backups, never runs at the same time as an automatic deploy, and Telegram
+tells you when it fails. Log: `journalctl -u homelab-backup`.
+
+For Google Drive, once:
+
+1. [Make your own client ID](https://rclone.org/drive/#making-your-own-client-id) (free): rclone's
+   shared one is rate limited by Google. Publish the app ("In production"), or its login
+   expires after 7 days.
+2. On a computer with a browser, [install rclone](https://rclone.org/install/), run
+   `rclone config`: a new remote `gdrive`, type `drive`, your client ID and secret, scope
+   `drive.file` (only the files it makes itself, not the rest of your Drive).
+3. `rclone config show gdrive` prints the section for `config/vault.yml`:
+
+   ```yaml
+   vault_rclone_config: |
+     [gdrive]
+     type = drive
+     client_id = <your client ID>
+     client_secret = <your client secret>
+     scope = drive.file
+     token = {"access_token":"…","refresh_token":"…",…}
+   ```
+
+4. The folder, in `config/settings.yml`: `homelab_backup_remote: "gdrive:Backup/homelab"`. Let
+   rclone make it: with `drive.file` it can't see a folder you made yourself.
+
+Other clouds: `rclone config` writes such a section too.
+
+Getting things out, also on another computer with restic and rclone: put the repository and the
+password in the environment (on the server: `sudo -i` and `set -a; . /etc/homelab-backup/env`),
+then `restic snapshots` lists the backups, `restic restore latest --target ~/restore` puts
+everything back as plain files under `~/restore/backup/staging/` (`--include '*.epub'` for only
+the ebooks), and `restic mount ~/backup` lets you browse them as folders.
 
 ## Layout
 
@@ -168,7 +211,8 @@ The linked folders have a short README of their own.
 | [`roles/tailscale`](roles/tailscale) | Keeps Tailscale updated, publishes the web UIs with `tailscale serve` |
 | [`library/`](library) | Ansible modules for the Radarr/Sonarr/Prowlarr and qBittorrent APIs and Calibre-Web's database |
 | [`filter_plugins/`](filter_plugins) | Password hash for qBittorrent's first-start config, Bazarr's settings form |
-| `roles/autodeploy` | Automatic deploys (Extras) |
+| [`roles/autodeploy`](roles/autodeploy) | Automatic deploys (Extras) |
+| [`roles/backup`](roles/backup) | Offsite backup (Extras) |
 | [`.github/workflows/`](.github/workflows), `renovate.json` | This repo's CI, releases and weekly image updates on GitHub; not needed to run it |
 
 ## What gets configured
@@ -181,7 +225,7 @@ The linked folders have a short README of their own.
 | Cleanuparr | Your login, qBittorrent, Radarr/Sonarr; removes downloads stuck on metadata (15 min) or stalled (30 min), then Radarr/Sonarr search again |
 | Recyclarr | TRaSH Guides 1080p quality profiles (stock profiles removed), custom formats and naming |
 | Jellyfin | Admin account, more users (`vault_jellyfin_users`), optionally profile tiles, pictures and one home screen (`config/jellyfin.yml`), libraries, hardware transcoding, API key for Radarr/Sonarr |
-| Seerr | Jellyfin login, Radarr/Sonarr as default servers |
+| Seerr | Jellyfin login, Radarr/Sonarr as default servers, optionally the discover languages and streaming region (`app_config_seerr_discover`) |
 | Maintainerr | Jellyfin, Radarr, Sonarr, Seerr and Telegram, and your rule groups from `config/maintainerr.yml` (the example removes what has been watched, via a "Leaving soon" collection in Jellyfin). It has no login |
 | Bazarr | Radarr/Sonarr connection, subtitles for everything in your languages (`app_config_bazarr_profile`, English by default), OpenSubtitles, SubDL and Subsource (optional, account or key in the vault). Optional (`homelab_bazarr`) |
 | Calibre-Web | Optional (`homelab_books`): your login instead of the default admin, Kobo sync with the Kobo store passed through, more users and their Kobo tokens (`vault_calibre_users`) |
