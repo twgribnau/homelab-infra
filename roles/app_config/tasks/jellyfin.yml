@@ -140,6 +140,89 @@
       when: item.json | combine(item.item.settings) != item.json
       changed_when: true
 
+    - name: Jellyfin | Read the users
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Users"
+        headers:
+          Authorization: "{{ _auth }}"
+      register: _app_config_jf_users
+      check_mode: false
+
+    # Not admins; they see every library and keep their own watch history.
+    - name: Jellyfin | Create missing users
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Users/New"
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        body_format: json
+        body:
+          Name: "{{ item.name }}"
+          Password: "{{ item.password }}"
+      loop: "{{ app_config_jellyfin_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.name not in _app_config_jf_users.json | map(attribute='Name')
+      register: _app_config_jf_new_users
+      changed_when: true
+      no_log: true
+
+    # A tile on the login screen, to pick a profile like on Netflix (a password is still asked).
+    - name: Jellyfin | Profiles on the login screen
+      vars:
+        _user: >-
+          {{ (_app_config_jf_users.json
+              + (_app_config_jf_new_users.results | selectattr('json', 'defined') | map(attribute='json')))
+             | selectattr('Name', 'equalto', item) | first | default({'Policy': {'IsHidden': false}}) }}
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/Users/{{ _user.Id }}/Policy"
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        body_format: json
+        body: "{{ _user.Policy | combine({'IsHidden': false}) }}"
+        status_code: 204
+      loop: "{{ [homelab_username] + app_config_jellyfin_users | map(attribute='name') }}"
+      when:
+        - app_config_jellyfin_profile_tiles | bool
+        - _user.Policy.IsHidden
+      changed_when: true
+
+    # The web app keeps each user's home screen as its display preferences ("emby").
+    - name: Jellyfin | Read the home screens
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/DisplayPreferences/usersettings?userId={{ item.Id }}&client=emby"
+        headers:
+          Authorization: "{{ _auth }}"
+      loop: >-
+        {{ _app_config_jf_users.json
+           + (_app_config_jf_new_users.results | selectattr('json', 'defined') | map(attribute='json')) }}
+      loop_control:
+        label: "{{ item.Name }}"
+      register: _app_config_jf_home
+      check_mode: false
+      when: app_config_jellyfin_home | length > 0
+
+    - name: Jellyfin | Home screen
+      vars:
+        _rows: >-
+          {{ dict(range(10) | map('string') | map('regex_replace', '^', 'homesection')
+                  | zip(app_config_jellyfin_home + ['none'] * 10)) }}
+        _prefs: "{{ item.json | combine({'CustomPrefs': _rows}, recursive=true) }}"
+      ansible.builtin.uri:
+        url: "{{ app_config_urls.jellyfin }}/DisplayPreferences/usersettings?userId={{ item.item.Id }}&client=emby"
+        method: POST
+        headers:
+          Authorization: "{{ _auth }}"
+        body_format: json
+        body: "{{ _prefs }}"
+        status_code: 204
+      loop: "{{ _app_config_jf_home.results | rejectattr('skipped', 'defined') }}"
+      loop_control:
+        label: "{{ item.item.Name }}"
+      when: _prefs != item.json
+      changed_when: true
+
     - name: Jellyfin | Read the API keys
       ansible.builtin.uri:
         url: "{{ app_config_urls.jellyfin }}/Auth/Keys"
