@@ -2,9 +2,8 @@
 # Settings shared by several roles. Role-specific settings live in roles/*/defaults.
 
 homelab_user: "{{ vault_homelab_user }}"   # the server's login user
-# Your own configuration: config/, a link to your private repo (README). secrets/ is its old
-# name, still read until the next release.
-homelab_config_dir: "{{ playbook_dir ~ ('/config' if (playbook_dir ~ '/config') is directory else '/secrets') }}"
+# Your own configuration: config/, a link to your private repo (README).
+homelab_config_dir: "{{ playbook_dir }}/config"
 homelab_uid: 1000
 homelab_gid: 1000
 homelab_tz: Etc/UTC   # the apps' time zone, e.g. Europe/Amsterdam in config/settings.yml

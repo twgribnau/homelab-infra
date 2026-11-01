@@ -14,3 +14,5 @@ homelab_tailscale: true
 # app_config_bazarr_profile: { name: Dutch and English, languages: [nl, en] }
 # The country Jellyfin uses for ratings and release dates (default US), e.g.:
 # app_config_jellyfin_country: NL
+# Seerr: discover movies and series in these original languages, and show where they stream:
+# app_config_seerr_discover: { originalLanguage: "nl|en", streamingRegion: NL }

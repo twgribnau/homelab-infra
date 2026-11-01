@@ -32,10 +32,12 @@ vault_github_token: ""
 # vault_jellyfin_users:
 #   - { name: viewer, password: "" }
 # Optional, with homelab_backup_remote (settings.yml): the rclone remote for the offsite backup,
-# as rclone writes it (README, Offsite backup). Google Drive, for example:
+# as `rclone config show` prints it (README, Offsite backup). Google Drive, for example:
 # vault_rclone_config: |
 #   [gdrive]
 #   type = drive
+#   client_id = ...apps.googleusercontent.com
+#   client_secret = ...
 #   scope = drive.file
 #   token = {"access_token":"...","token_type":"Bearer","refresh_token":"...","expiry":"..."}
 # Optional: a peer port forwarded by your VPN provider, e.g. 24257

@@ -67,11 +67,6 @@
     group: "{{ homelab_gid }}"
     follow: false
 
-- name: Remove the link under the old name
-  ansible.builtin.file:
-    path: "{{ autodeploy_dir }}/secrets"
-    state: absent
-
 - name: Write the backup and Telegram settings for the deploys
   ansible.builtin.copy:
     content: |

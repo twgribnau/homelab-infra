@@ -100,6 +100,34 @@
   when: not _app_config_seerr_public.json.initialized
   changed_when: true
 
+- name: Seerr | Read the general settings
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/main"
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+  register: _app_config_seerr_main
+  check_mode: false
+  no_log: true
+  when: app_config_seerr_discover | length > 0
+
+# The defaults of every user; a user can still choose otherwise in their own profile.
+- name: Seerr | Discover and streaming region, languages
+  vars:
+    _settings: "{{ _app_config_seerr_main.json | combine(app_config_seerr_discover) }}"
+  ansible.builtin.uri:
+    url: "{{ app_config_urls.seerr }}/api/v1/settings/main"
+    method: POST
+    headers:
+      X-Api-Key: "{{ _app_config_seerr_key }}"
+    body_format: json
+    # Without the API key: Seerr refuses it as read-only.
+    body: "{{ _settings | dict2items | rejectattr('key', 'equalto', 'apiKey') | items2dict }}"
+  when:
+    - app_config_seerr_discover | length > 0
+    - _settings != _app_config_seerr_main.json
+  changed_when: true
+  no_log: true
+
 - name: Seerr | Read the Telegram settings
   ansible.builtin.uri:
     url: "{{ app_config_urls.seerr }}/api/v1/settings/notifications/telegram"
