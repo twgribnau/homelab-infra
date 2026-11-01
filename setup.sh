@@ -9,8 +9,6 @@ config_dir="$HOME/homelab-config"
 fail() { echo "❌ $1" >&2; exit 1; }
 encrypted() { head -c 14 "$1" | grep -q '^\$ANSIBLE_VAULT'; }
 
-# The link's old name, secrets/, becomes config/.
-[ -L secrets ] && [ ! -e config ] && mv secrets config
 [ -e config ] || [ -d "$config_dir" ] ||
   fail "No $config_dir. Copy config.example/ there and fill in vault.yml (README, Setup)."
 [ -e config ] || ln -s "$config_dir" config

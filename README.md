@@ -83,8 +83,7 @@ the encrypted files are useless to anyone else, and without it they are useless 
 
 With automatic deploys (Extras), a commit to your config repo is deployed too: the server pulls
 it every 10 minutes, with your own SSH key. On a new server, clone it to `~/homelab-config` and
-put the vault password in `.vault_pass` before `./setup.sh`. Coming from `~/homelab-secrets`
-and `secrets/` (before v2): rename the folder, and `setup.sh` renames the link.
+put the vault password in `.vault_pass` before `./setup.sh`.
 
 ## Options
 
