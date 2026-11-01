@@ -110,9 +110,12 @@ ansible-playbook provision.yml
 ```
 
 - Run part of it with `--tags docker|download|media|books|monitoring|apps|tailscale`, or one app with
-  `--tags qbittorrent|jellyfin|arrs|prowlarr|cleanuparr|recyclarr|seerr|maintainerr|bazarr|calibre|homepage`.
+  `--tags qbittorrent|jellyfin|arrs|prowlarr|cleanuparr|recyclarr|seerr|maintainerr|bazarr|calibre|homepage|bookmarks`.
 - Preview with `--check --diff` (once Docker is installed).
 - `./reset.sh` wipes the server back to Ubuntu + Tailscale (`--keep-media` keeps the library).
+- Bookmarks for every web UI, at the address that works for you: `~/srv/bookmarks.html` on the
+  server. Copy it with `scp <server>:srv/bookmarks.html .` and import it in your browser
+  (Bookmarks, Import, HTML file).
 - Family members only need a Jellyfin user, with their own watch history: `vault_jellyfin_users`
   in the vault, or make one in Jellyfin (Dashboard, Users). They log in with it on the TV.
 - Ebooks: put them in `~/srv/media-data/books-ingest`; Calibre-Web imports them into the library.
