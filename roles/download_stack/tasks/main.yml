@@ -13,6 +13,7 @@
     - "{{ homelab_stack_dirs.download }}/appdata/qbittorrent"
     - "{{ homelab_stack_dirs.download }}/appdata/qbittorrent/qBittorrent"
     - "{{ homelab_stack_dirs.download }}/appdata/prowlarr"
+    - "{{ homelab_stack_dirs.download }}/appdata/cleanuparr"
 
 - name: Deploy the WireGuard config
   ansible.builtin.copy:

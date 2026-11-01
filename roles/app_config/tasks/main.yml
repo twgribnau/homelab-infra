@@ -25,6 +25,10 @@
   ansible.builtin.import_tasks: prowlarr.yml
   tags: prowlarr
 
+- name: Cleanuparr
+  ansible.builtin.import_tasks: cleanuparr.yml
+  tags: cleanuparr
+
 - name: Recyclarr
   ansible.builtin.import_tasks: recyclarr.yml
   tags: recyclarr

@@ -71,6 +71,10 @@
           url: http://gluetun:{{ homelab_ports.qbittorrent }}
           username: {{ homelab_username | to_json }}
           password: {{ homelab_password | to_json }}
+    - Cleanuparr:
+        icon: cleanuparr.png
+        href: {{ web }}:11011
+        siteMonitor: http://cleanuparr:11011/health
 
 {% if homelab_monitoring | bool or (app_config_github_repo and app_config_github_token) %}
 - System:

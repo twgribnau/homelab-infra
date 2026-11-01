@@ -9,5 +9,6 @@ tailscale_serve:
   - { app: bazarr, port: 6767, target: "{{ homelab_ports.bazarr }}" }
   - { app: prowlarr, port: 9696, target: "{{ homelab_ports.prowlarr }}" }
   - { app: qbittorrent, port: 8080, target: "{{ homelab_ports.qbittorrent }}" }
+  - { app: cleanuparr, port: 11011, target: "{{ homelab_ports.cleanuparr }}" }
   - { app: grafana, port: 3000, target: "{{ homelab_ports.grafana }}" }
   - { app: homepage, port: 3001, target: "{{ homelab_ports.homepage }}" }

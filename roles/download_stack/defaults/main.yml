@@ -4,4 +4,5 @@ download_stack_images:
   qbittorrent: docker.io/linuxserver/qbittorrent:5.3.0_v2.1.2-ls485
   prowlarr: docker.io/linuxserver/prowlarr:2.7.0.5723-ls166
   flaresolverr: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+  cleanuparr: ghcr.io/cleanuparr/cleanuparr:2.10.12
   autoheal: willfarrell/autoheal:1.2.0

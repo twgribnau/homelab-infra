@@ -109,6 +109,31 @@ services:
       TZ: {{ homelab_tz }}
     restart: unless-stopped
 
+  # Removes downloads that stay stalled or stuck on metadata; Radarr and Sonarr then
+  # blocklist the release and search again.
+  cleanuparr:
+    image: {{ download_stack_images.cleanuparr }}
+    environment:
+      PUID: "{{ homelab_uid }}"
+      PGID: "{{ homelab_gid }}"
+      TZ: {{ homelab_tz }}
+    volumes:
+      - {{ homelab_stack_dirs.download }}/appdata/cleanuparr:/config
+    ports:
+      - "{{ homelab_publish_ip }}:{{ homelab_ports.cleanuparr }}:11011"
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl"
+        - "-fsS"
+        - "-o"
+        - "/dev/null"
+        - "http://localhost:11011/health"
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
   autoheal:
     image: {{ download_stack_images.autoheal }}
     network_mode: none

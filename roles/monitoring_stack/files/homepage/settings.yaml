@@ -14,6 +14,6 @@ statusStyle: dot
 # A tab per group, every tile the same size.
 useEqualHeights: true
 layout:
-  Media: { tab: Media, style: row, columns: 5 }
-  Downloads: { tab: Downloads, style: row, columns: 5 }
-  System: { tab: System, style: row, columns: 5 }
+  Media: { tab: Media, style: row, columns: 4 }
+  Downloads: { tab: Downloads, style: row, columns: 4 }
+  System: { tab: System, style: row, columns: 4 }
